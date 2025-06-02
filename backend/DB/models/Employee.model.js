@@ -99,6 +99,16 @@ EmployeeSchema.pre("save", function (next) {
   next();
 });
 
+EmployeeSchema.pre("findOneAndUpdate", function (next) {
+  const update = this.getUpdate();
+
+  update.workingHoursPerDay =
+    update.defaultCheckOutTime - update.defaultCheckInTime;
+
+  this.setUpdate(update);
+  next();
+});
+
 const employeeModel =
   mongoose.models.Employee || model("Employee", EmployeeSchema);
 export default employeeModel;

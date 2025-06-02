@@ -1,8 +1,7 @@
 import mongoose from "mongoose";
-const url = process.env.URL ||"mongodb://localhost:27017/hr_system";
 const connection = () => {
   mongoose
-    .connect(url)
+    .connect(process.env.URL)
     .then(() => {
       console.log("connection successfully");
     })
