@@ -8,6 +8,7 @@ export const addEmployee = asyncHandler(async (req, res, next) => {
     email,
     phone,
     salary,
+    address,
     defaultCheckInTime,
     defaultCheckOutTime,
     gender,
