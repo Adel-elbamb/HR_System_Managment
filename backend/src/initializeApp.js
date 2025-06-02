@@ -4,7 +4,6 @@ import cors from "cors";
 import path from "path";
 import EmployeeRouter from "./module/Employee/Employee.router.js";
 
-
 const initializeApp = (app, express) => {
   app.use(express.json());
   connection();

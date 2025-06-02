@@ -27,7 +27,7 @@ const EmployeeSchema = new Schema(
       // match: [/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/, "Please enter a valid phone number"]
     },
     department: { type: Schema.Types.ObjectId, ref: "Department" },
-    hireDate: { type: Date },
+    hireDate: { type: String },
     salary: {
       type: Number,
       min: [0, "Salary cannot be negative"],
@@ -44,17 +44,17 @@ const EmployeeSchema = new Schema(
     gender: {
       type: String,
       enum: {
-        values: ["Male", "Female"],
+        values: ["male", "female"],
         message: "{VALUE} is not a valid gender",
       },
     },
     nationality: { type: String },
-    birthdate: { type: Date },
+    birthdate: { type: String },
     nationalId: {
       type: String,
       unique: true,
       sparse: true,
-      minlength: [10, "National ID must be at least 10 characters"],
+      minlength: [14, "National ID must be 14 characters"],
     },
     weekendDays: {
       type: [String],
@@ -62,13 +62,13 @@ const EmployeeSchema = new Schema(
       validate: {
         validator: function (v) {
           const validDays = [
-            "Sunday",
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
+            "sunday",
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
           ];
           return v.every((day) => validDays.includes(day));
         },
@@ -94,8 +94,8 @@ const EmployeeSchema = new Schema(
 );
 
 EmployeeSchema.pre("save", function (next) {
-  this.hireDate = new Date();
-  this.workingHoursPerDay = this;
+  this.hireDate = new Date().toISOString().split("T")[0];
+  this.workingHoursPerDay = this.defaultCheckOutTime - this.defaultCheckInTime;
   next();
 });
 

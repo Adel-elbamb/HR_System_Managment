@@ -1,4 +1,5 @@
-import AppError from '../utils/AppError.js';
+// import AppError from '../utils/AppError';
+import AppError from "../utils/AppError.js"
 
 const validation = (schema) => {
     return (req, res, next) => {
