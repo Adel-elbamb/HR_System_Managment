@@ -1,5 +1,5 @@
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import employeeModel from "../../../DB/models/Employee.model.js";
+import employeeModel from "../../../../DB/models/Employee.model.js";
 
 export const addEmployee = asyncHandler(async (req, res, next) => {
   const {
@@ -17,5 +17,5 @@ export const addEmployee = asyncHandler(async (req, res, next) => {
     department,
     weekendDays,
   } = req.body;
-  const employee = await employeeModel.create({});
+  const employee = await employeeModel.create(req.body);
 });
