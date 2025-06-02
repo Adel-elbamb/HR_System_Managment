@@ -1,13 +1,15 @@
 import connection from "../DB/connection.js";
 import { globalError } from "./utils/asyncHandler.js";
-import cors from 'cors' ;
+import cors from "cors";
 import path from "path";
+import EmployeeRouter from "./module/Employee/Employee.router.js";
+
 
 const initializeApp = (app, express) => {
   app.use(express.json());
   connection();
 
-
+  app.use("/employee", EmployeeRouter);
 
   app.use(globalError);
   app.use("/{*any}", (req, res, next) => {
@@ -15,8 +17,7 @@ const initializeApp = (app, express) => {
       success: false,
       message: `Can't find this route: ${req.originalUrl}`,
     });
-      
   });
-}
+};
 
 export default initializeApp;
