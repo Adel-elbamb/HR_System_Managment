@@ -4,7 +4,7 @@ import  employeeModel from '../../../../DB/models/Employee.model.js';
 
 
 
-export const getAllEmployee = asyncHandler(async (req, res) => {
+export const getDeletedEmployees = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, department, gender, name } = req.query;
 
     const pageNum = Math.max(1, Number(page));
@@ -27,12 +27,12 @@ export const getAllEmployee = asyncHandler(async (req, res) => {
         ];
     }
 
-    const allEmployee = await employeeModel.find({...query, isDeleted: false})
+    const allEmployee = await employeeModel.find({...query, isDeleted: true })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum)
         .lean();
 
-    const count = await employeeModel.countDocuments({...query, isDeleted: false});
+    const count = await employeeModel.countDocuments({...query, isDeleted: true});
     const totalPages = Math.ceil(count / limitNum);
 
     res.status(200).json({

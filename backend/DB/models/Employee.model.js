@@ -89,6 +89,10 @@ const EmployeeSchema = new Schema(
       type: Number,
       min: [0, "Salary per hour cannot be negative"],
     },
+    isDeleted: {
+  type: Boolean,
+  default: false,
+}
   },
   { timestamps: true }
 );
@@ -99,15 +103,54 @@ EmployeeSchema.pre("save", function (next) {
   next();
 });
 
+// EmployeeSchema.pre("findOneAndUpdate", function (next) {
+//   const update = this.getUpdate();
+
+//   update.workingHoursPerDay =
+//     update.defaultCheckOutTime - update.defaultCheckInTime;
+  
+//   this.setUpdate(update);
+//   next();
+// });
+
 EmployeeSchema.pre("findOneAndUpdate", function (next) {
   const update = this.getUpdate();
+  const data = update?.$set || update;
 
-  update.workingHoursPerDay =
-    update.defaultCheckOutTime - update.defaultCheckInTime;
+  const checkIn = data.defaultCheckInTime;
+  const checkOut = data.defaultCheckOutTime;
 
-  this.setUpdate(update);
+  const shouldCalculateWorkingHours =
+    typeof checkIn === "string" && typeof checkOut === "string";
+
+  if (shouldCalculateWorkingHours) {
+    const [startHour, startMin] = checkIn.split(":").map(Number);
+    const [endHour, endMin] = checkOut.split(":").map(Number);
+
+    const totalHours = (endHour + endMin / 60) - (startHour + startMin / 60);
+    const workingHours = Number(totalHours.toFixed(2));
+
+    if (update.$set) {
+      update.$set.workingHoursPerDay = workingHours;
+    } else {
+      update.workingHoursPerDay = workingHours;
+    }
+  } else {
+    if (update?.$set?.workingHoursPerDay !== undefined) {
+      delete update.$set.workingHoursPerDay;
+    }
+    if (update?.workingHoursPerDay !== undefined) {
+      delete update.workingHoursPerDay;
+    }
+  }
+
   next();
 });
+
+
+
+
+
 
 const employeeModel =
   mongoose.models.Employee || model("Employee", EmployeeSchema);

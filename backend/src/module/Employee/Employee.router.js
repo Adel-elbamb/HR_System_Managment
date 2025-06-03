@@ -9,7 +9,16 @@ import {
   deleteIdSchema,
 } from "./Employee.validation.js";
 
-router.route("/").post(validation(addEmployeeSchema), addEmployee);
-router.route("/:id").put(validation(updateEmployeeSchema), updateEmployee);
+import { getAllEmployee } from './Controller/GetAllEmployee.controller.js';
+import { getOneEmployee } from './Controller/GetOneEmployee.controller.js';
+import { deleteEmployee } from "./Controller/DeleteEmployee.controller.js";
+import { getDeletedEmployees } from "./Controller/GetAllDeletedEmployees.controller.js";
+import {restoreEmployee} from "./Controller/RestoreDeletedEmployee.controller.js"
+router.get('/deleted',getDeletedEmployees)
+router.route("/restore/:id").patch(restoreEmployee)
+router.route("/").post(validation(addEmployeeSchema), addEmployee).get(getAllEmployee);
+router.route("/:id").put(validation(updateEmployeeSchema), updateEmployee)
+ .get(getOneEmployee)
+ .delete(deleteEmployee);
 
 export default router;
