@@ -1,7 +1,5 @@
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import  employeeModel from '../../../../DB/models/Employee.model.js';
-
-
+import employeeModel from "../../../../DB/models/Employee.model.js";
 
 export const restoreEmployee = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -13,7 +11,7 @@ export const restoreEmployee = asyncHandler(async (req, res) => {
   );
 
   if (!employee) {
-    return res.status(404).json({ message: "Employee not found" });
+    return next(new AppError("Employee not found", 400));
   }
 
   res.status(200).json({

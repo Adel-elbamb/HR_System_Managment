@@ -1,10 +1,8 @@
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import  employeeModel from '../../../../DB/models/Employee.model.js';
+import employeeModel from "../../../../DB/models/Employee.model.js";
+import AppError from "../../../utils/AppError.js";
 
-
-
-
-export const deleteEmployee = asyncHandler(async (req, res) => {
+export const deleteEmployee = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
   const employee = await employeeModel.findByIdAndUpdate(
@@ -14,7 +12,7 @@ export const deleteEmployee = asyncHandler(async (req, res) => {
   );
 
   if (!employee) {
-    return res.status(404).json({ message: "Employee not found" });
+    return next(new AppError("Employee not found", 400));
   }
 
   res.status(200).json({

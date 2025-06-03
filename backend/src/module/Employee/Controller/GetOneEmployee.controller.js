@@ -14,12 +14,12 @@ export const getOneEmployee = asyncHandler(async (req, res, next) => {
   }
 
   const employee = await employeeModel
-    .findById(id)
+    .find({ _id: id, isDeleted: false })
     .lean()
     .populate("department");
 
-  if (!employee) {
-    return next(new AppError( "Employee not found" ,400));
+  if (!employee || employee.length == 0) {
+    return next(new AppError("Employee not found", 400));
   }
 
   res.status(200).json({
