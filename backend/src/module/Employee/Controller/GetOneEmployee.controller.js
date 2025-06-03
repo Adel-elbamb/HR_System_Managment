@@ -1,23 +1,29 @@
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import  employeeModel from '../../../../DB/models/Employee.model.js';
+import employeeModel from "../../../../DB/models/Employee.model.js";
 
 import mongoose from "mongoose";
+import AppError from "../../../utils/AppError.js";
 
-export const getOneEmployee = asyncHandler(async (req, res) => {
-    const { id } = req.params;
+export const getOneEmployee = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ success: false, message: "Invalid employee ID format" });
-    }
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid employee ID format" });
+  }
 
-    const employee = await employeeModel.findById(id).lean();
+  const employee = await employeeModel
+    .findById(id)
+    .lean()
+    .populate("department");
 
-    if (!employee) {
-        return res.status(404).json({ success: false, message: "Employee not found" });
-    }
+  if (!employee) {
+    return next(new AppError( "Employee not found" ,400));
+  }
 
-    res.status(200).json({
-        success: true,
-        data: employee,
-    });
+  res.status(200).json({
+    success: true,
+    data: employee,
+  });
 });
