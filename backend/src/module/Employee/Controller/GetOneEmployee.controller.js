@@ -16,7 +16,6 @@ export const getOneEmployee = asyncHandler(async (req, res, next) => {
   const employee = await employeeModel
     .find({ _id: id, isDeleted: false })
     .lean()
-    .populate("department");
 
   if (!employee || employee.length == 0) {
     return next(new AppError("Employee not found", 400));

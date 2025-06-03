@@ -90,9 +90,9 @@ const EmployeeSchema = new Schema(
       min: [0, "Salary per hour cannot be negative"],
     },
     isDeleted: {
-  type: Boolean,
-  default: false,
-}
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
@@ -102,7 +102,6 @@ EmployeeSchema.pre("save", function (next) {
   this.workingHoursPerDay = this.defaultCheckOutTime - this.defaultCheckInTime;
   next();
 });
-
 
 EmployeeSchema.pre("findOneAndUpdate", function (next) {
   const update = this.getUpdate();
@@ -118,7 +117,7 @@ EmployeeSchema.pre("findOneAndUpdate", function (next) {
     const [startHour, startMin] = checkIn.split(":").map(Number);
     const [endHour, endMin] = checkOut.split(":").map(Number);
 
-    const totalHours = (endHour + endMin / 60) - (startHour + startMin / 60);
+    const totalHours = endHour + endMin / 60 - (startHour + startMin / 60);
     const workingHours = Number(totalHours.toFixed(2));
 
     if (update.$set) {
@@ -138,18 +137,13 @@ EmployeeSchema.pre("findOneAndUpdate", function (next) {
   next();
 });
 
-
 EmployeeSchema.pre(/^find/, function (next) {
   this.populate({
-    path:"department",
-    select:"departmentName"
+    path: "department",
+    select: "departmentName",
   });
   next();
 });
-
-
-
-
 
 const employeeModel =
   mongoose.models.Employee || model("Employee", EmployeeSchema);

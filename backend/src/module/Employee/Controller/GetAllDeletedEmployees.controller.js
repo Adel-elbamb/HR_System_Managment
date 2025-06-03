@@ -30,7 +30,6 @@ export const getDeletedEmployees = asyncHandler(async (req, res, next) => {
     .skip((pageNum - 1) * limitNum)
     .limit(limitNum)
     .lean()
-    .populate("department");
 
   const count = await employeeModel.countDocuments({
     ...query,
