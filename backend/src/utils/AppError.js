@@ -8,10 +8,8 @@ class AppError extends Error {
     if (options.details) {
       this.details = options.details;
     }
-    Error.captureStackTrace(this, this.constructor);
+    // Error.captureStackTrace(this, this.constructor);
   }
 }
-
-
 
 export default AppError;

@@ -3,6 +3,8 @@ const router = Router();
 import validation from "../../middleware/validation.js";
 import { addEmployee } from "./Controller/AddEmployee.controller.js";
 import { updateEmployee } from "./Controller/UpdateEmployee.controller.js";
+import {getAllEmployee} from "./Controller/GetAllEmployee.controller.js"
+import {getOneEmployee} from "./Controller/GetOneEmployee.controller.js"
 import {
   addEmployeeSchema,
   updateEmployeeSchema,
