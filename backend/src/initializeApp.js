@@ -2,11 +2,13 @@ import connection from "../DB/connection.js";
 import { globalError } from "./utils/asyncHandler.js";
 import cors from 'cors' ;
 import path from "path";
+import holidayRouter from "./module/holiday/holiday.router.js";
 
 const initializeApp = (app, express) => {
   app.use(express.json());
   connection();
 
+  app.use("/holiday",holidayRouter);
 
 
   app.use(globalError);
