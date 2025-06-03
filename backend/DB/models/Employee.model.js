@@ -103,15 +103,6 @@ EmployeeSchema.pre("save", function (next) {
   next();
 });
 
-// EmployeeSchema.pre("findOneAndUpdate", function (next) {
-//   const update = this.getUpdate();
-
-//   update.workingHoursPerDay =
-//     update.defaultCheckOutTime - update.defaultCheckInTime;
-  
-//   this.setUpdate(update);
-//   next();
-// });
 
 EmployeeSchema.pre("findOneAndUpdate", function (next) {
   const update = this.getUpdate();
@@ -147,6 +138,14 @@ EmployeeSchema.pre("findOneAndUpdate", function (next) {
   next();
 });
 
+
+EmployeeSchema.pre(/^find/, function (next) {
+  this.populate({
+    path:"department",
+    select:"departmentName"
+  });
+  next();
+});
 
 
 
