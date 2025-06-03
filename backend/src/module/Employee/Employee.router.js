@@ -19,12 +19,14 @@ router
   .route("/")
   .post(validation(addEmployeeSchema), addEmployee)
   .get(getAllEmployee);
-  router
+router
   .route("/:id")
   .put(validation(updateEmployeeSchema), updateEmployee)
   .get(getOneEmployee)
   .delete(deleteEmployee);
-  router.route("/restore/:id").patch(restoreEmployee);
-  router.get("/deleted", getDeletedEmployees);
+router.route("/restore/:id").patch(restoreEmployee);
+router.get("/deleted", getDeletedEmployees);
+
+
 
 export default router;
