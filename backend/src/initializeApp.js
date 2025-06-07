@@ -1,11 +1,14 @@
 import connection from "../DB/connection.js";
 import { globalError } from "./utils/asyncHandler.js";
+import authRoutes from "./module/Auth/auth.routes.js";
 import cors from 'cors' ;
 import path from "path";
 
 const initializeApp = (app, express) => {
   app.use(express.json());
   connection();
+    app.use("/auth", authRoutes);
+
 
 
 

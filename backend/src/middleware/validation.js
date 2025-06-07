@@ -1,5 +1,6 @@
 import AppError from "../utils/AppError.js";
 
+
 const validation = (schema) => {
   return (req, res, next) => {
     try {
@@ -72,3 +73,5 @@ const validation = (schema) => {
 };
 
 export default validation;
+export { HRLoginSchema };
+

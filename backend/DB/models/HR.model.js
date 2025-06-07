@@ -10,7 +10,7 @@ const HRSchema = new Schema(
       lowercase: true,
       // match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, "Please enter a valid email"]
     },
-    passwordHash: { 
+    password: { 
       type: String, 
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters"]
@@ -21,6 +21,11 @@ const HRSchema = new Schema(
       trim: true,
       minlength: [2, "Name must be at least 2 characters"]
     },
+    role: {
+      type: String,
+      default: "HR"
+    }
+
   },
   { timestamps: true }
 );
