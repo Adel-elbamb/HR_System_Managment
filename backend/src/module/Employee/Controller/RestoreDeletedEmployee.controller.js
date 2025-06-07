@@ -1,5 +1,7 @@
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import employeeModel from "../../../../DB/models/Employee.model.js";
+import AppError from "../../../utils/AppError.js";
+
 
 export const restoreEmployee = asyncHandler(async (req, res) => {
   const { id } = req.params;
