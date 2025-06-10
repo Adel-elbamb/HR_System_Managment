@@ -3,7 +3,10 @@ import { globalError } from "./utils/asyncHandler.js";
 import authRoutes from "./module/Auth/auth.routes.js";
 import cors from 'cors' ;
 import path from "path";
+
+import holidayRouter from "./module/holiday/holiday.router.js";
 import departmentRouter from "./module/Department/Department.router.js";
+
 
 const initializeApp = (app, express) => {
   app.use(express.json());
@@ -11,6 +14,7 @@ const initializeApp = (app, express) => {
   connection();
     app.use("/auth", authRoutes);
 
+  app.use("/holiday",holidayRouter);
 
   // Register routes
   app.use('/api/department', departmentRouter);
