@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
+
 // export const auth = asyncHandler((req, res, next) => {
 //   const authorization = req.headers['authorization'];
 //   if (!authorization || !authorization.startsWith(process.env.BEARERTOKEN)) {
