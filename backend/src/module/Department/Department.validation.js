@@ -1,6 +1,6 @@
-const joi = require('joi');
+import joi from 'joi';
 
-exports.departmentValidation = joi.object({
+export const departmentValidation = joi.object({
     departmentName: joi.string()
         .required()
         .min(2)
@@ -15,7 +15,7 @@ exports.departmentValidation = joi.object({
         })
 });
 
-exports.updateDepartmentValidation = joi.object({
+export const updateDepartmentValidation = joi.object({
     departmentName: joi.string()
         .min(2)
         .max(50)
@@ -28,7 +28,7 @@ exports.updateDepartmentValidation = joi.object({
         })
 });
 
-exports.queryValidation = joi.object({
+export const queryValidation = joi.object({
     page: joi.number().integer().min(1).default(1),
     limit: joi.number().integer().min(1).max(100).default(10),
     sortBy: joi.string().valid('departmentName', 'createdAt').default('createdAt'),

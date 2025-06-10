@@ -1,8 +1,8 @@
-const mongoose = require('mongoose');
-const Department = require('../../../../DB/models/Department.model');
-const AppError = require('../../../utils/AppError');
-const asyncHandler = require('../../../utils/asyncHandler');
-const { departmentValidation, updateDepartmentValidation, queryValidation } = require('../Department.validation');
+import mongoose from 'mongoose';
+import Department from '../../../../DB/models/Department.model.js';
+import AppError from '../../../utils/AppError.js';
+import { asyncHandler } from '../../../utils/asyncHandler.js';
+import { departmentValidation, updateDepartmentValidation, queryValidation } from '../Department.validation.js';
 
 const checkDuplicateDepartment = async (departmentName, excludeId = null) => {
     const query = { departmentName: { $regex: new RegExp(`^${departmentName}$`, 'i') } };
@@ -13,7 +13,7 @@ const checkDuplicateDepartment = async (departmentName, excludeId = null) => {
     return existingDepartment;
 };
 
-exports.createDepartment = asyncHandler(async (req, res, next) => {
+export const createDepartment = asyncHandler(async (req, res, next) => {
     const { error } = departmentValidation.validate(req.body);
     if (error) {
         return next(new AppError(error.details[0].message, 400));
@@ -36,7 +36,7 @@ exports.createDepartment = asyncHandler(async (req, res, next) => {
     });
 });
 
-exports.getAllDepartments = asyncHandler(async (req, res, next) => {
+export const getAllDepartments = asyncHandler(async (req, res, next) => {
     const { error, value } = queryValidation.validate(req.query);
     if (error) {
         return next(new AppError(error.details[0].message, 400));
@@ -74,7 +74,7 @@ exports.getAllDepartments = asyncHandler(async (req, res, next) => {
     });
 });
 
-exports.getDepartmentById = asyncHandler(async (req, res, next) => {
+export const getDepartmentById = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -94,7 +94,7 @@ exports.getDepartmentById = asyncHandler(async (req, res, next) => {
     });
 });
 
-exports.updateDepartment = asyncHandler(async (req, res, next) => {
+export const updateDepartment = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -131,7 +131,7 @@ exports.updateDepartment = asyncHandler(async (req, res, next) => {
     });
 });
 
-exports.deleteDepartment = asyncHandler(async (req, res, next) => {
+export const deleteDepartment = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
