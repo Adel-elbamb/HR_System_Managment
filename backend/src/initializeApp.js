@@ -7,7 +7,7 @@ import path from "path";
 const initializeApp = (app, express) => {
   app.use(express.json());
   connection();
-    app.use("/auth", authRoutes);
+    app.use("/api/auth", authRoutes);
 
 
 
