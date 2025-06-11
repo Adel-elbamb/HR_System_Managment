@@ -25,8 +25,7 @@ const initializeApp = (app, express) => {
       success: false,
       message: `Can't find this route: ${req.originalUrl}`,
     });
-      
   });
-}
+};
 
 export default initializeApp;
