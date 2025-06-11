@@ -20,9 +20,11 @@ const AttendanceSchema = new Schema(
     },
     checkInTime: { 
       type: String,
+
     },
     checkOutTime: { 
       type: String,
+      
 
     },
     lateDurationInHours: { 

@@ -13,26 +13,26 @@ export const addAttendance=asyncHandler(async(req,res,next)=>{
 
     if(!employeeId || !date || !checkInTime || !checkOutTime || !status)
     {
-        next(new AppError("Please fill all the fields"));
+        return next(new AppError("Please fill all the fields"));
     }
     // get employee
     const employee = await employeeModel.findById(employeeId);
     if(!employee)
     {
-        next(new AppError("Employee not found"));
+        return next(new AppError("Employee not found"));
     }
     // check if holiday or not
     const holiday = await holidayModel.findOne({date});
     if(holiday)
     {
-     next(new AppError("This date is a holiday"));
+      return next(new AppError("This date is a holiday"));
     }
 
     //check all days in week
     const weekdays = moment(date).format('dddd');
     if(employee.weekendDays.includes(weekdays))
     {
-        next(new AppError("This date is not a weekday"));
+        return next(new AppError("This date is not a weekday"));
     }
     
     let lateDurationInHours = 0;
