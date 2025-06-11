@@ -3,7 +3,7 @@ const { Schema, model } = mongoose;
 
 const PayrollSchema = new Schema(
   {
-    employee: { 
+    employeeId: { 
       type: Schema.Types.ObjectId, 
       ref: "Employee", 
       required: [true, "Employee reference is required"]
