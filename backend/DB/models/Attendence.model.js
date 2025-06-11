@@ -47,5 +47,13 @@ const AttendanceSchema = new Schema(
   { timestamps: true }
 );
 
+AttendanceSchema.pre(/^find/, function(next) {
+  this.populate({
+    path: "employeeId",
+    select: "firstName lastName",
+  });
+  next();
+})
+
 const attendanceModel = mongoose.models.Attendance || model("Attendance", AttendanceSchema);
 export default attendanceModel;
