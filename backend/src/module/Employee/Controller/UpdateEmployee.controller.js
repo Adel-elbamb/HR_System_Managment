@@ -1,8 +1,10 @@
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import employeeModel from "../../../../DB/models/Employee.model.js";
+import AppError from "../../../utils/AppError.js";
 
-export const updateEmployee = asyncHandler(async (req, res) => {
+export const updateEmployee = asyncHandler(async (req, res, next) => {
   let {
+    user,
     firstName,
     lastName,
     email,
@@ -13,6 +15,7 @@ export const updateEmployee = asyncHandler(async (req, res) => {
     defaultCheckOutTime,
     gender,
     nationality,
+    nationalId,
     birthdate,
     department,
     weekendDays,
@@ -30,6 +33,35 @@ export const updateEmployee = asyncHandler(async (req, res) => {
     deductionValue = deductionValue * salaryPerHour;
   }
 
+  const existingEmail = await employeeModel.findOne({
+    email,
+    _id: { $ne: req.params.id },
+  });
+  if (existingEmail) {
+    return next(new AppError("Email Already exist", 402));
+  }
+  const existingAddress = await employeeModel.findOne({
+    address,
+    _id: { $ne: req.params.id },
+  });
+  if (existingAddress) {
+    return next(new AppError("Reapeated Address", 402));
+  }
+  const existingPhone = await employeeModel.findOne({
+    phone,
+    _id: { $ne: req.params.id },
+  });
+  if (existingPhone) {
+    return next(new AppError("Phone Already exist", 402));
+  }
+  const existingNationalId = await employeeModel.findOne({
+    nationalId,
+    _id: { $ne: req.params.id },
+  });
+  if (existingNationalId) {
+    return next(new AppError("nationalId Already exist", 402));
+  }
+
   const updateData = {
     firstName,
     lastName,
@@ -41,6 +73,7 @@ export const updateEmployee = asyncHandler(async (req, res) => {
     defaultCheckOutTime,
     gender,
     nationality,
+    nationalId,
     birthdate,
     department,
     weekendDays,

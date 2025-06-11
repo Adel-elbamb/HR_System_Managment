@@ -18,7 +18,6 @@ const EmployeeSchema = new Schema(
     email: {
       type: String,
       required: [true, "Email is required"],
-      unique: true,
       lowercase: true,
       // match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, "Please enter a valid email"]
     },
@@ -52,7 +51,6 @@ const EmployeeSchema = new Schema(
     birthdate: { type: String },
     nationalId: {
       type: String,
-      unique: true,
       sparse: true,
       minlength: [14, "National ID must be 14 characters"],
     },

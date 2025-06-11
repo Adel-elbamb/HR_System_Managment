@@ -25,28 +25,28 @@ export const addEmployeeSchema = Joi.object({
   birthdate: Joi.string().required(),
   department: Joi.string().required(),
   weekendDays: Joi.array()
-    .items(Joi.string())
-    .valid(
-      "sunday",
-      "monday",
-      "tuesday",
-      "wednesday",
-      "thursday",
-      "friday",
-      "saturday"
+    .items(
+      Joi.string().valid(
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday"
+      )
     )
     .required(),
   overtimeValue: Joi.number().required(),
   deductionValue: Joi.number().required(),
+  overtimeType: Joi.string().required().valid("hr", "pound"),
+  deductionType: Joi.string().required().valid("hr", "pound"),
 });
 
 export const updateEmployeeSchema = Joi.object({
   firstName: Joi.string(),
   lastName: Joi.string(),
-  email: Joi.string()
-    .email()
-
-    .pattern(new RegExp("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$")),
+  email: Joi.string().email().pattern(new RegExp("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$")),
   phone: Joi.string().pattern(new RegExp("^[0-9]{11}$")),
   salary: Joi.number(),
   defaultCheckInTime: Joi.number(),
@@ -57,9 +57,8 @@ export const updateEmployeeSchema = Joi.object({
   nationalId: Joi.string().length(14),
   birthdate: Joi.date(),
   department: Joi.string(),
-  weekendDays: Joi.array()
-    .items(Joi.string())
-    .valid(
+  weekendDays: Joi.array().items(
+    Joi.string().valid(
       "sunday",
       "monday",
       "tuesday",
@@ -67,9 +66,12 @@ export const updateEmployeeSchema = Joi.object({
       "thursday",
       "friday",
       "saturday"
-    ),
+    )
+  ),
   overtimeValue: Joi.number(),
   deductionValue: Joi.number(),
+  overtimeType: Joi.string().required().valid("hr", "pound"),
+  deductionType: Joi.string().required().valid("hr", "pound"),
 });
 
 export const deleteIdSchema = Joi.object({
