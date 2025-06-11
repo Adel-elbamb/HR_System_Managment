@@ -4,9 +4,9 @@ import { asyncHandler } from '../../../utils/asyncHandler.js';
 import moment from 'moment';
 
 export const getAllAttendance = asyncHandler(async (req, res) => {
-        const {firstName,date,limit=10,page=1} = req.query;
+        const {firstName,date,sortBy='createdAt',sort='desc',limit=10,page=1} = req.query;
         const filter = {};
-        console.log(firstName,date,limit,page);
+       
       if (firstName) {
   const employees = await employeeModel.find({
     firstName: new RegExp(firstName, 'i')
@@ -26,8 +26,8 @@ export const getAllAttendance = asyncHandler(async (req, res) => {
 }
 
       
-      console.log("Filter object:", filter)
         const allAttendance = await attendanceModel.find(filter)
+                                                    .sort({[sortBy]:sort})
                                                     .limit(+limit)
                                                     .skip(+limit*(+page-1));
         res.status(200).json({
