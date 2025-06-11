@@ -4,9 +4,9 @@ import authRoutes from "./module/Auth/auth.routes.js";
 import cors from "cors";
 import path from "path";
 
-import holidayRouter from "./module/holiday/holiday.router.js";
-import departmentRouter from "./module/Department/Department.router.js";
-import EmployeeRouter from "./module/Employee/Employee.router.js";
+import holidayRouter from "./module/holiday/holiday.routes.js";
+import departmentRouter from "./module/Department/Department.routes.js";
+import EmployeeRouter from "./module/Employee/Employee.routes.js";
 import { auth } from "./middleware/auth.js";
 
 const initializeApp = (app, express) => {
