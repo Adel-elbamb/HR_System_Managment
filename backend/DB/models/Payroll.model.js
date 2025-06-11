@@ -58,5 +58,13 @@ const PayrollSchema = new Schema(
   { timestamps: true }
 );
 
+PayrollSchema.pre(/^find/, function (next) {
+  this.populate({
+    path: "employeeId",
+      select: "firstName lastName"
+  });
+  next();
+})
+
 const payrollModel = mongoose.models.Payroll || model("Payroll", PayrollSchema);
 export default payrollModel;
