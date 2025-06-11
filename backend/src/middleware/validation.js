@@ -73,5 +73,5 @@ const validation = (schema) => {
 };
 
 export default validation;
-export { HRLoginSchema };
+// export { HRLoginSchema };
 
