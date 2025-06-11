@@ -73,11 +73,10 @@ export const addPayRoll = asyncHandler(async (req, res, next) => {
     const overtimeAmount = totalOvertime * employeeData.overtimeValue;
 
     const netSalary = employeeData.salary + overtimeAmount - totalDeductionAmount + totalBonusAmount;
-
+    const startOfMonthDate = moment.utc(month, 'YYYY-MM').startOf('month').toDate();
     const payRoll = await payrollModel.create({
-    employee: employeeId, // required ref
-    employeeId, // optional
-    month,
+    employeeId: employeeId, 
+    month: startOfMonthDate,
     monthDays,
     attendedDays,
     absentDays,

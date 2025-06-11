@@ -15,13 +15,13 @@ const initializeApp = (app, express) => {
   app.use(cors());
   connection();
   app.use("/api/auth", authRoutes);
-  app.use(auth);
+  // app.use(auth);
 
   app.use("/api/holiday", holidayRouter);
   app.use("/api/employee", EmployeeRouter);
   // Register routes
   app.use("/api/department", departmentRouter);
-  app.use('/payroll',PayRoll);
+  app.use('/api/payroll',PayRoll);
   app.use(globalError);
   app.use("/{*any}", (req, res, next) => {
     res.status(404).json({
