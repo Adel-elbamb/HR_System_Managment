@@ -26,7 +26,7 @@ const EmployeeSchema = new Schema(
       // match: [/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/, "Please enter a valid phone number"]
     },
     department: { type: Schema.Types.ObjectId, ref: "Department" },
-    hireDate: { type: String },
+    hireDate: { type: Date },
     salary: {
       type: Number,
       min: [0, "Salary cannot be negative"],
@@ -51,7 +51,6 @@ const EmployeeSchema = new Schema(
     birthdate: { type: String },
     nationalId: {
       type: String,
-      sparse: true,
       minlength: [14, "National ID must be 14 characters"],
     },
     weekendDays: {
@@ -96,7 +95,7 @@ const EmployeeSchema = new Schema(
 );
 
 EmployeeSchema.pre("save", function (next) {
-  this.hireDate = new Date().toISOString().split("T")[0];
+  this.hireDate = new Date();
   this.workingHoursPerDay = this.defaultCheckOutTime - this.defaultCheckInTime;
   next();
 });
@@ -142,6 +141,11 @@ EmployeeSchema.pre(/^find/, function (next) {
   });
   next();
 });
+
+EmployeeSchema.index({ email: 1 }, { unique: true });
+EmployeeSchema.index({ address: 1 }, { unique: true });
+EmployeeSchema.index({ phone: 1 }, { unique: true });
+EmployeeSchema.index({ nationalId: 1 }, { unique: true });
 
 const employeeModel =
   mongoose.models.Employee || model("Employee", EmployeeSchema);

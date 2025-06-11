@@ -13,11 +13,11 @@ const initializeApp = (app, express) => {
   app.use(express.json());
   app.use(cors());
   connection();
-  app.use("/auth", authRoutes);
+  app.use("/api/auth", authRoutes);
   app.use(auth);
 
-  app.use("/holiday", holidayRouter);
-  app.use("/employee", EmployeeRouter);
+  app.use("/api/holiday", holidayRouter);
+  app.use("/api/employee", EmployeeRouter);
   // Register routes
   app.use("/api/department", departmentRouter);
 
