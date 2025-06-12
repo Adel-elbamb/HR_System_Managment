@@ -2,6 +2,9 @@ import hrModel from "../../../../DB/models/HR.model.js";
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import loginSchema from '../auth.validation.js';
+import { tokenBlacklist } from '../blacklist.js';
+import { asyncHandler } from '../../../utils/asyncHandler.js';
+
 
 export const register = async (req, res) => {
   try {
@@ -58,7 +61,7 @@ export const login = async (req, res) => {
 
     const token = jwt.sign(
       { id: user._id, name: user.name, email: user.email, role: "HR" },
-      process.env.JWT_SECRET,
+      process.env.SIGNTURE,
       { expiresIn: '1h' }
     );
 
@@ -68,3 +71,13 @@ export const login = async (req, res) => {
     return res.status(500).json({ status: "error", message: error.message });
   }
 };
+
+export const logout = asyncHandler((req, res) => {
+  const token = req.headers['authorization'];
+
+  if (token) {
+    tokenBlacklist.push(token);
+  }
+
+  return res.status(200).json({ status: 'success', message: 'Logged out successfully' });
+});
