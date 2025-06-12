@@ -1,8 +1,7 @@
 import payrollModel from '../../../../DB/models/Payroll.model.js';
 import AppError from "../../../utils/AppError.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import employeeModel from '../../../../DB/models/Employee.model.js'
-import moment from 'moment';
+
 
 export const getPayRollById = asyncHandler(async (req, res, next) => {
 
