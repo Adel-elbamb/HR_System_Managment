@@ -53,7 +53,10 @@ const validation = (schema) => {
           validationErrors.push(...filesValidation.error.details);
         }
       }
-
+      let validate = schema.validate(req.body, { abortEarly: false });
+      if (validate.error) {
+        return next(new AppError(JSON.stringify(validate.error.details), 422));
+      }
       // If any validation errors occurred
       if (validationErrors.length > 0) {
         const errorMessages = validationErrors
@@ -72,3 +75,4 @@ const validation = (schema) => {
 };
 
 export default validation;
+// export { HRLoginSchema };
