@@ -13,8 +13,10 @@ const initializeApp = (app, express) => {
   app.use(express.json());
   app.use(cors());
   connection();
+
   app.use("/api/auth", authRoutes);
   app.use(auth);
+
 
   app.use("/api/holiday", holidayRouter);
   app.use("/api/employee", EmployeeRouter);
