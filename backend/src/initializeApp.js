@@ -3,6 +3,7 @@ import { globalError } from "./utils/asyncHandler.js";
 import authRoutes from "./module/Auth/auth.routes.js";
 import cors from "cors";
 import path from "path";
+import PayRoll from "./module/PayRoll/payroll.routes.js";
 import AttendanceRouter from './module/Attendance/Attendance.router.js';
 import holidayRouter from "./module/holiday/holiday.routes.js";
 import departmentRouter from "./module/Department/Department.routes.js";
@@ -26,7 +27,7 @@ const initializeApp = (app, express) => {
   app.use("/api/employee", EmployeeRouter);
   // Register routes
   app.use("/api/department", departmentRouter);
-
+  app.use('/api/payroll',PayRoll);
 
   app.use(globalError);
   app.use("/{*any}", (req, res, next) => {

@@ -3,13 +3,13 @@ const { Schema, model } = mongoose;
 
 const PayrollSchema = new Schema(
   {
-    employee: { 
+    employeeId: { 
       type: Schema.Types.ObjectId, 
       ref: "Employee", 
       required: [true, "Employee reference is required"]
     },
     month: { 
-      type: String, 
+      type: Date, 
       required: [true, "Month is required"],
     },
     monthDays: { 
@@ -57,6 +57,14 @@ const PayrollSchema = new Schema(
   },
   { timestamps: true }
 );
+
+PayrollSchema.pre(/^find/, function (next) {
+  this.populate({
+    path: "employeeId",
+      select: "firstName lastName"
+  });
+  next();
+})
 
 const payrollModel = mongoose.models.Payroll || model("Payroll", PayrollSchema);
 export default payrollModel;
