@@ -16,7 +16,7 @@ router.route('/')
 router.route('/:id').get(getAttendanceById)
       .put(validation(addAttendanceSchema),updateAttendance)
       .delete(deleteAttendance)
-    
+
 
 
 

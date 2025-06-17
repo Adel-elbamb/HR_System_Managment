@@ -4,7 +4,7 @@ import authRoutes from "./module/Auth/auth.routes.js";
 import cors from "cors";
 import path from "path";
 import PayRoll from "./module/PayRoll/payroll.routes.js";
-import AttendanceRouter from "./module/Attendance/Attendance.router.js";
+import AttendanceRouter from "./module/Attendance/Attendance.routes.js";
 import holidayRouter from "./module/holiday/holiday.routes.js";
 import departmentRouter from "./module/Department/Department.routes.js";
 import EmployeeRouter from "./module/Employee/Employee.routes.js";

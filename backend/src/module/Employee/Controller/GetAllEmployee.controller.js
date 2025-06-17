@@ -1,5 +1,6 @@
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import employeeModel from "../../../../DB/models/Employee.model.js";
+import departmentModel from "../../../../DB/models/Department.model.js";
 import AppError from "../../../utils/AppError.js";
 
 export const getAllEmployee = asyncHandler(async (req, res, next) => {
@@ -10,8 +11,19 @@ export const getAllEmployee = asyncHandler(async (req, res, next) => {
 
   const query = {};
 
-  if (department) {
-    query.department = department;
+  if (department && department !== 'all') {
+    const dept = await departmentModel.findOne({ departmentName: department });
+    if (dept) {
+      query.department = dept._id;
+    } else {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        count: 0,
+        currentPage: pageNum,
+        totalPages: 0,
+      });
+    }
   }
 
   if (gender) {
@@ -27,22 +39,35 @@ export const getAllEmployee = asyncHandler(async (req, res, next) => {
 
   const allEmployee = await employeeModel
     .find({ ...query, isDeleted: false })
+    .populate({ path: "department", select: "departmentName" })
     .skip((pageNum - 1) * limitNum)
     .limit(limitNum)
-    .lean()
+    .lean();
 
   const count = await employeeModel.countDocuments({
     ...query,
     isDeleted: false,
   });
-  if (count == 0) {
+
+  const transformedEmployees = allEmployee.map(emp => ({
+    ...emp,
+    name: `${emp.firstName} ${emp.lastName}`,
+    department: emp.department ? emp.department.departmentName : 'N/A',
+  }));
+
+  if (count === 0 && (department || gender || name)) {
+    return next(new AppError("No Employees Found for the given criteria", 400));
+  }
+  
+  if (count === 0 && (!department && !gender && !name)) {
     return next(new AppError("No Employees Found", 400));
   }
+
   const totalPages = Math.ceil(count / limitNum);
 
   res.status(200).json({
     success: true,
-    data: allEmployee,
+    data: transformedEmployees,
     count,
     currentPage: pageNum,
     totalPages,
