@@ -40,10 +40,10 @@ const AttendanceSchema = new Schema(
     status: {
       type: String,
       enum: {
-        values: ["Present", "Absent", "On Leave"],
+        values: ["present", "absent", "On Leave"],
         message: "{VALUE} is not a valid status"
       },
-      default: "Present",
+      default: "present",
     },
   },
   { timestamps: true }
