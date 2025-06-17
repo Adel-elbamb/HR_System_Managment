@@ -2,7 +2,6 @@ import connection from "../DB/connection.js";
 import { globalError } from "./utils/asyncHandler.js";
 import authRoutes from "./module/Auth/auth.routes.js";
 import cors from "cors";
-import path from "path";
 import PayRoll from "./module/PayRoll/payroll.routes.js";
 import AttendanceRouter from "./module/Attendance/Attendance.routes.js";
 import holidayRouter from "./module/holiday/holiday.routes.js";
@@ -20,7 +19,6 @@ const initializeApp = (app, express) => {
   app.use("/attendance", AttendanceRouter);
   app.use("/api/holiday", holidayRouter);
   app.use("/api/employee", EmployeeRouter);
-  // Register routes
   app.use("/api/department", departmentRouter);
   app.use("/api/payroll", PayRoll);
 
