@@ -139,6 +139,7 @@ EmployeeSchema.pre(/^find/, function (next) {
     path: "department",
     select: "departmentName",
   });
+
   next();
 });
 

@@ -16,8 +16,20 @@ export const addEmployeeSchema = Joi.object({
     .pattern(new RegExp("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$")),
   phone: Joi.string().required().pattern(new RegExp("^[0-9]{11}$")),
   salary: Joi.number().required(),
-  defaultCheckInTime: Joi.number().required(),
-  defaultCheckOutTime: Joi.number().required(),
+  defaultCheckInTime: Joi.string()
+    .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
+    .required()
+    .messages({
+      required: "check in time is required",
+      string: "invalid check in time",
+    }),
+  defaultCheckOutTime: Joi.string()
+    .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
+    .required()
+    .messages({
+      required: "check out time is required",
+      string: "invalid check out time",
+    }),
   address: Joi.string().required(),
   gender: Joi.string().required().valid("male", "female"),
   nationality: Joi.string().required(),
@@ -46,7 +58,9 @@ export const addEmployeeSchema = Joi.object({
 export const updateEmployeeSchema = Joi.object({
   firstName: Joi.string(),
   lastName: Joi.string(),
-  email: Joi.string().email().pattern(new RegExp("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$")),
+  email: Joi.string()
+    .email()
+    .pattern(new RegExp("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$")),
   phone: Joi.string().pattern(new RegExp("^[0-9]{11}$")),
   salary: Joi.number(),
   defaultCheckInTime: Joi.number(),

@@ -4,14 +4,16 @@ import AppError from "../../../utils/AppError.js";
 import employeeModel from "../../../../DB/models/Employee.model.js";
 import holidayModel from "../../../../DB/models/Holiday.model.js";
 import moment from "moment";
+
 // convert time to date and time formate object
 const parseTimeToDate = (timeString, dateString) => {
   return moment(`${dateString} ${timeString}`, "YYYY-MM-DD HH:mm:ss").toDate();
 };
-export const addAttendance = asyncHandler(async (req, res, next) => {
-  const { employeeId, date, checkInTime, checkOutTime, status } = req.body;
 
-  if (!employeeId || !date || !checkInTime || !checkOutTime || !status) {
+export const addAttendance = asyncHandler(async (req, res, next) => {
+  const { employeeId, checkInTime, checkOutTime, status } = req.body;
+
+  if (!employeeId || !checkInTime || !checkOutTime || !status) {
     return next(new AppError("Please fill all the fields"));
   }
   // get employee
@@ -19,6 +21,8 @@ export const addAttendance = asyncHandler(async (req, res, next) => {
   if (!employee) {
     return next(new AppError("Employee not found"));
   }
+
+  let date = new Date();
   // check if holiday or not
   const holiday = await holidayModel.findOne({ date });
   if (holiday) {

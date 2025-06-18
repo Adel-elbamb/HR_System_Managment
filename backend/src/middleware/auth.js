@@ -43,11 +43,8 @@ import { tokenBlacklist } from '../module/Auth/blacklist.js';
 
 
 export const auth = asyncHandler((req, res, next) => {
-  const raw = req.headers['authorization'];
-  const token = raw && raw.startsWith('Bearer ') ? raw.split(' ')[1] : null;
-
-
-
+  const token = req.headers['authorization'];
+  // const token = raw && raw.startsWith('Bearer ') ? raw.split(' ')[1] : null;
 
   if (!token) {
     return next(new Error("Please login, you are not authorized"));

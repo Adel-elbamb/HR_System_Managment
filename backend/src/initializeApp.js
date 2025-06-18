@@ -16,7 +16,7 @@ const initializeApp = (app, express) => {
 
   app.use("/api/auth", authRoutes);
   app.use(auth);
-  app.use("/attendance", AttendanceRouter);
+  app.use("/api/attendance", AttendanceRouter);
   app.use("/api/holiday", holidayRouter);
   app.use("/api/employee", EmployeeRouter);
   app.use("/api/department", departmentRouter);
