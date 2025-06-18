@@ -30,7 +30,7 @@ export const addEmployee = asyncHandler(async (req, res, next) => {
   function getHourDecimal(timeStr) {
   if (!timeStr) return 0;
   const [h, m = 0, s = 0] = timeStr.split(':').map(Number);
-  return h + m / 60 + s / 3600;
+  return h + m / 60 + s / 3600 
 }
 
 const checkIn = getHourDecimal(defaultCheckInTime);
