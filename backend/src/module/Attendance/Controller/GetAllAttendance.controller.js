@@ -7,7 +7,6 @@ export const getAllAttendance = asyncHandler(async (req, res) => {
   const {
     firstName,
     date,
-    month,
     sortBy = "createdAt",
     sort = "desc",
     limit = 10,
@@ -32,10 +31,6 @@ export const getAllAttendance = asyncHandler(async (req, res) => {
   if (date) {
     const start = moment(date, "YYYY-MM-DD").startOf("day").toDate();
     const end = moment(date, "YYYY-MM-DD").endOf("day").toDate();
-    filter.date = { $gte: start, $lte: end };
-  } else if (month) {
-    const start = moment(month, "YYYY-MM").startOf("month").toDate();
-    const end = moment(month, "YYYY-MM").endOf("month").toDate();
     filter.date = { $gte: start, $lte: end };
   }
 

@@ -40,5 +40,5 @@ export const addAttendanceSchema = joi.object({
     number: "invalid overtime duration",
   }),
 
-  status: joi.string().valid("present", "absent").required(),
+  status: joi.string().valid("present", "absent", "On Leave").required(),
 });
