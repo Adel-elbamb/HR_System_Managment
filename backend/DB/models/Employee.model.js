@@ -147,11 +147,8 @@ EmployeeSchema.pre(/^find/, function (next) {
 });
 
 EmployeeSchema.post("save", function (next) {
-  const absentDays =
-    countWorkingDays(this.weekendDays) - this.hireDate.getDate();
-  const netSalary =
-    this.salary - this.salaryPerHour * this.workingHoursPerDay * absentDays;
   const monthDays = getCurrentMonthDaysCount(this.hireDate);
+  const absentDays = this.hireDate.getDate() - 1;
   const payroll = new payrollModel({
     employeeId: this._id,
     month: this.hireDate,
@@ -162,7 +159,7 @@ EmployeeSchema.post("save", function (next) {
     totalBonusAmount: 0,
     totalDeduction: 0,
     totalDeductionAmount: 0,
-    netSalary,
+    netSalary: 0,
   });
   payroll.save();
 });

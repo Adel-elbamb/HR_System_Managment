@@ -42,7 +42,6 @@ const countWorkingDays = ({
       workingDays++;
     }
   }
-
   return workingDays;
 };
 
