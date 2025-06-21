@@ -1,4 +1,4 @@
-export const countWorkingDays = ({
+const countWorkingDays = ({
   weekendNames = ["Saturday", "Sunday"],
   holidays = [],
   year = new Date().getFullYear(),
@@ -45,3 +45,5 @@ export const countWorkingDays = ({
 
   return workingDays;
 };
+
+export default countWorkingDays;

@@ -1,4 +1,7 @@
 import mongoose from "mongoose";
+import payrollModel from "./Payroll.model.js";
+import countWorkingDays from "../../src/utils/workingDaysOfMonthCount.js";
+import getCurrentMonthDaysCount from "../../src/utils/CurrentMonthDaysCount.js";
 const { Schema, model } = mongoose;
 
 const EmployeeSchema = new Schema(
@@ -141,6 +144,27 @@ EmployeeSchema.pre(/^find/, function (next) {
   });
 
   next();
+});
+
+EmployeeSchema.post("save", function (next) {
+  const absentDays =
+    countWorkingDays(this.weekendDays) - this.hireDate.getDate();
+  const netSalary =
+    this.salary - this.salaryPerHour * this.workingHoursPerDay * absentDays;
+  const monthDays = getCurrentMonthDaysCount(this.hireDate);
+  const payroll = new payrollModel({
+    employeeId: this._id,
+    month: this.hireDate,
+    monthDays,
+    attendedDays: 0,
+    absentDays,
+    totalOvertime: 0,
+    totalBonusAmount: 0,
+    totalDeduction: 0,
+    totalDeductionAmount: 0,
+    netSalary,
+  });
+  payroll.save();
 });
 
 EmployeeSchema.index({ email: 1 }, { unique: true });
