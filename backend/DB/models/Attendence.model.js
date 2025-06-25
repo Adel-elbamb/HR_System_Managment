@@ -1,4 +1,7 @@
 import mongoose from "mongoose";
+import payrollModel from "./Payroll.model";
+import employeeModel from "./Employee.model";
+import AppError from "../../src/utils/AppError";
 const { Schema, model } = mongoose;
 
 const AttendanceSchema = new Schema(
@@ -75,6 +78,34 @@ AttendanceSchema.set("toJSON", {
     }
     return ret;
   },
+});
+
+AttendanceSchema.post("save", async function (next) {
+  const employee = await employeeModel.findById(this.employeeId);
+  if (!employee) {
+    console.log("failed to find the employee to update payroll");
+    return;
+  }
+  const empPayroll = await payrollModel.find({ employeeId: employee._id });
+  if (this.status === "present") {
+    empPayroll.attendedDays += 1;
+  } else {
+    empPayroll.absentDays += 1;
+  }
+  if (this.overtimeDurationInHours > 0) {
+    empPayroll.totalOvertime += overtimeDurationInHours;
+    empPayroll.totalBonusAmount +=
+      overtimeDurationInHours * employee.overtimeValue;
+    empPayroll.netSalary += overtimeDurationInHours * employee.overtimeValue;
+  }
+  if (this.lateDurationInHours > 0) {
+    empPayroll.totalDeduction += lateDurationInHours;
+    empPayroll.totalDeductionAmount +=
+      lateDurationInHours * employee.deductionValue;
+    empPayroll.netSalary -= lateDurationInHours * employee.deductionValue;
+  }
+  await empPayroll.save();
+  console.log("Updated Payroll Successfully after Update Attendance");
 });
 
 const attendanceModel =

@@ -28,7 +28,7 @@ const monthlyPayroll = () => {
             totalBonusAmount: 0,
             totalDeduction: 0,
             totalDeductionAmount: 0,
-            netSalary: 0,
+            netSalary: emp.salary,
           };
         });
 
