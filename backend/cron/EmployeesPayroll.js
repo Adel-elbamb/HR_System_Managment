@@ -1,7 +1,7 @@
 import cron from "node-cron";
-import employeeModel from "../DB/models/Employee.model";
-import payrollModel from "../DB/models/Payroll.model";
-import getCurrentMonthDaysCount from "../src/utils/CurrentMonthDaysCount";
+import employeeModel from "../DB/models/Employee.model.js";
+import payrollModel from "../DB/models/Payroll.model.js";
+import getCurrentMonthDaysCount from "../src/utils/CurrentMonthDaysCount.js";
 
 const monthlyPayroll = () => {
   cron.schedule(

@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
-import payrollModel from "./Payroll.model";
-import employeeModel from "./Employee.model";
-import AppError from "../../src/utils/AppError";
+import payrollModel from "./Payroll.model.js";
+import employeeModel from "./Employee.model.js";
 const { Schema, model } = mongoose;
 
 const AttendanceSchema = new Schema(

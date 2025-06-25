@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import monthlyPayroll from "../cron/EmployeesPayroll";
+import monthlyPayroll from "../cron/EmployeesPayroll.js";
 
 const connection = () => {
   mongoose
