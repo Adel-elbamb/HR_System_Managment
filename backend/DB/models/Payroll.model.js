@@ -9,11 +9,11 @@ const PayrollSchema = new Schema(
       required: [true, "Employee reference is required"],
     },
     month: {
-      type: Date,
+      type: Number,
       required: [true, "Month is required"],
     },
     year: {
-      type: Date,
+      type: Number,
       required: [true, "Year is required"],
     },
     monthDays: {

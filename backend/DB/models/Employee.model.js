@@ -146,13 +146,13 @@ EmployeeSchema.pre(/^find/, function (next) {
   next();
 });
 
-EmployeeSchema.post("save", function (next) {
-  const monthDays = getCurrentMonthDaysCount(this.hireDate);
-  const absentDays = this.hireDate.getDate() - 1;
+EmployeeSchema.post("save", async function (doc) {
+  const monthDays = getCurrentMonthDaysCount(doc.hireDate);
+  const absentDays = doc.hireDate.getDate() - 1;
   const currentMonth = new Date().getMonth() + 1; // 1-12
   const currentYear = new Date().getFullYear();
   const payroll = new payrollModel({
-    employeeId: this._id,
+    employeeId: doc._id,
     month: currentMonth,
     year: currentYear,
     monthDays,
@@ -164,7 +164,7 @@ EmployeeSchema.post("save", function (next) {
     totalDeductionAmount: 0,
     netSalary: 0,
   });
-  payroll.save();
+  await payroll.save();
 });
 
 EmployeeSchema.index({ email: 1 }, { unique: true });

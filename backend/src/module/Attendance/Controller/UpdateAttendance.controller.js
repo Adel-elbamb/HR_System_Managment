@@ -29,7 +29,7 @@ export const updateAttendance = asyncHandler(async (req, res, next) => {
   lateDurationInHours = parseFloat(lateDurationInHours.toFixed(2));
   overtimeDurationInHours = parseFloat(overtimeDurationInHours.toFixed(2));
 
-  if (checkInTime && status === "Present") {
+  if (checkInTime && status === "present") {
     const defaultCheckIn = parseTimeToDate(
       employee.defaultCheckInTime || "09:00:00",
       attendance.date
@@ -40,7 +40,7 @@ export const updateAttendance = asyncHandler(async (req, res, next) => {
         ? moment(actualCheckIn).diff(defaultCheckIn, "hours", true)
         : 0;
   }
-  if (checkOutTime && status === "Present") {
+  if (checkOutTime && status === "present") {
     const defaultCheckOut = parseTimeToDate(
       employee.defaultCheckOutTime || "17:00:00",
       attendance.date
