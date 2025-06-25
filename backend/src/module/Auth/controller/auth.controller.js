@@ -5,47 +5,6 @@ import loginSchema from "../auth.validation.js";
 import { tokenBlacklist } from "../blacklist.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 
-export const register = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({
-          status: "fail",
-          message: "Name, email and password are required",
-        });
-    }
-
-    const existingUser = await hrModel.findOne({ email: email.trim() });
-    if (existingUser) {
-      return res
-        .status(400)
-        .json({
-          status: "fail",
-          message: "User already exists with this email",
-        });
-    }
-
-    const hashedPassword = await bcryptjs.hash(password, 10);
-
-    const newUser = new hrModel({
-      name: name.trim(),
-      email: email.trim(),
-      password: hashedPassword,
-      role: "HR",
-    });
-
-    await newUser.save();
-
-    return res
-      .status(201)
-      .json({ status: "success", message: "User registered successfully" });
-  } catch (error) {
-    return res.status(500).json({ status: "error", message: error.message });
-  }
-};
 
 export const login = async (req, res) => {
   try {
