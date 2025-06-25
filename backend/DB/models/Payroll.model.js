@@ -12,6 +12,10 @@ const PayrollSchema = new Schema(
       type: Date,
       required: [true, "Month is required"],
     },
+    year: {
+      type: Date,
+      required: [true, "Year is required"],
+    },
     monthDays: {
       type: Number,
       min: [1, "Month days must be at least 1"],

@@ -149,9 +149,12 @@ EmployeeSchema.pre(/^find/, function (next) {
 EmployeeSchema.post("save", function (next) {
   const monthDays = getCurrentMonthDaysCount(this.hireDate);
   const absentDays = this.hireDate.getDate() - 1;
+  const currentMonth = new Date().getMonth() + 1; // 1-12
+  const currentYear = new Date().getFullYear();
   const payroll = new payrollModel({
     employeeId: this._id,
-    month: this.hireDate,
+    month: currentMonth,
+    year: currentYear,
     monthDays,
     attendedDays: 0,
     absentDays,
