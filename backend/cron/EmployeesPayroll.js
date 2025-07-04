@@ -16,7 +16,7 @@ const monthlyPayroll = () => {
         const currentYear = new Date().getFullYear();
 
         const payrollEntries = employees.map((emp) => {
-          const monthDays = getCurrentMonthDaysCount(emp.hireDate);
+          const monthDays = getCurrentMonthDaysCount();
           return {
             employeeId: emp._id,
             month: currentMonth,

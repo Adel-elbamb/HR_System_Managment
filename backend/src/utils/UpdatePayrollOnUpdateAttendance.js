@@ -2,7 +2,8 @@ import employeeModel from "../../DB/models/Employee.model.js";
 import payrollModel from "../../DB/models/Payroll.model.js";
 
 const UpdatePayrollOnUpdateAttendance = async (oldDoc, updates) => {
-  const employee = await employeeModel.findById(doc.employeeId);
+  // Fix: use oldDoc instead of doc
+  const employee = await employeeModel.findById(oldDoc.employeeId);
   if (!employee) {
     console.log("failed to find the employee to update payroll");
     return;
@@ -19,13 +20,14 @@ const UpdatePayrollOnUpdateAttendance = async (oldDoc, updates) => {
     return;
   }
 
+  // Fix: use oldDoc for status
   if (
     empPayroll.status &&
-    doc.status &&
+    oldDoc.status &&
     empPayroll.status.toString().trim().toLowerCase() !==
-      doc.status.toString().trim().toLowerCase()
+      oldDoc.status.toString().trim().toLowerCase()
   ) {
-    if (doc.status === "present") {
+    if (oldDoc.status === "present") {
       empPayroll.attendedDays += 1;
       empPayroll.absentDays -= 1;
     } else {
@@ -34,31 +36,26 @@ const UpdatePayrollOnUpdateAttendance = async (oldDoc, updates) => {
     }
   }
 
-  if (oldDoc.checkInTime !== updates.checkInTime) {
-    if (oldDoc.overtimeDurationInHours > updates.overtimeDurationInHours) {
-    } else if (
-      oldDoc.overtimeDurationInHours < updates.overtimeDurationInHours
-    ) {
-    }
+  // Calculate differences
+  const overtimeDiff =
+    (updates.overtimeDurationInHours || 0) -
+    (oldDoc.overtimeDurationInHours || 0);
+  const lateDiff =
+    (updates.lateDurationInHours || 0) - (oldDoc.lateDurationInHours || 0);
+
+  // Update totalOvertime and totalBonusAmount
+  if (overtimeDiff !== 0) {
+    empPayroll.totalOvertime += overtimeDiff;
+    empPayroll.totalBonusAmount += overtimeDiff * employee.overtimeValue;
+    empPayroll.netSalary += overtimeDiff * employee.overtimeValue;
   }
-  //   if (doc.overtimeDurationInHours > 0) {
-  //     empPayroll.totalOvertime += doc.overtimeDurationInHours;
 
-  //     empPayroll.totalBonusAmount +=
-  //       doc.overtimeDurationInHours * employee.overtimeValue;
-
-  //     empPayroll.netSalary +=
-  //       doc.overtimeDurationInHours * employee.overtimeValue;
-  //   }
-
-  //   if (doc.lateDurationInHours > 0) {
-  //     empPayroll.totalDeduction += doc.lateDurationInHours;
-
-  //     empPayroll.totalDeductionAmount +=
-  //       doc.lateDurationInHours * employee.deductionValue;
-
-  //     empPayroll.netSalary -= doc.lateDurationInHours * employee.deductionValue;
-  //   }
+  // Update totalDeduction and totalDeductionAmount
+  if (lateDiff !== 0) {
+    empPayroll.totalDeduction += lateDiff;
+    empPayroll.totalDeductionAmount += lateDiff * employee.deductionValue;
+    empPayroll.netSalary -= lateDiff * employee.deductionValue;
+  }
 
   await empPayroll.save();
   console.log("Updated Payroll Successfully after Update Attendance");

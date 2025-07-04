@@ -25,28 +25,31 @@ export const addEmployee = asyncHandler(async (req, res, next) => {
     deductionValue,
     deductionType,
   } = req.body;
-  // const salaryPerHour =
-  //   salary / (defaultCheckOutTime - defaultCheckInTime) / 30;
-  function getHourDecimal(timeStr) {
-  if (!timeStr) return 0;
-  const [h, m = 0, s = 0] = timeStr.split(':').map(Number);
-  return h + m / 60 + s / 3600 
-}
+  function getHourDecimal(timeStr, type = "in") {
+    if (!timeStr) return 0;
+    const [h, m = 0, s = 0] = timeStr.split(":").map(Number);
+    let hour = h;
+    if (type === "out" && hour < 8) {
+      // Assume check-out in PM if hour < 8
+      hour += 12;
+    }
+    return hour + m / 60 + s / 3600;
+  }
 
-const checkIn = getHourDecimal(defaultCheckInTime);
-const checkOut = getHourDecimal(defaultCheckOutTime);
-const hoursWorked = checkOut - checkIn;
+  const checkIn = getHourDecimal(defaultCheckInTime, "in");
+  const checkOut = getHourDecimal(defaultCheckOutTime, "out");
+  const hoursWorked = checkOut - checkIn;
 
-let salaryPerHour = 0;
-if (
-  typeof salary === 'number' &&
-  !isNaN(salary) &&
-  salary > 0 &&
-  hoursWorked > 0
-) {
-  salaryPerHour = salary / (hoursWorked * 30);
-}
-salaryPerHour = Math.max(0, Number(salaryPerHour) || 0);
+  let salaryPerHour = 0;
+  if (
+    typeof salary === "number" &&
+    !isNaN(salary) &&
+    salary > 0 &&
+    hoursWorked > 0
+  ) {
+    salaryPerHour = salary / (hoursWorked * 30);
+  }
+  salaryPerHour = Number(salaryPerHour);
   if (overtimeType == "hr") {
     overtimeValue = overtimeValue * salaryPerHour;
   }

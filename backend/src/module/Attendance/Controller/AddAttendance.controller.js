@@ -6,8 +6,12 @@ import holidayModel from "../../../../DB/models/Holiday.model.js";
 import moment from "moment";
 
 // convert time to date and time formate object
-const parseTimeToDate = (timeString, dateString) => {
-  return moment(`${dateString} ${timeString}`, "YYYY-MM-DD HH:mm:ss").toDate();
+const parseTimeToDate = (timeString, dateObj) => {
+  const dateStr = moment(dateObj).format("YYYY-MM-DD");
+  return moment(`${dateStr} ${timeString}`, [
+    "YYYY-MM-DD HH:mm:ss",
+    "YYYY-MM-DD HH:mm",
+  ]).toDate();
 };
 
 export const addAttendance = asyncHandler(async (req, res, next) => {
@@ -37,30 +41,51 @@ export const addAttendance = asyncHandler(async (req, res, next) => {
 
   let lateDurationInHours = 0;
   let overtimeDurationInHours = 0;
-  // calc the late hor
+
   if (status === "present" && checkInTime) {
-    const defaultCheckIn = parseTimeToDate(employee.defaultCheckInTime, date);
+    const defaultCheckIn = parseTimeToDate(
+      employee.defaultCheckInTime || "09:00:00",
+      date
+    );
     const actualCheckIn = parseTimeToDate(checkInTime, date);
     if (actualCheckIn > defaultCheckIn) {
-      lateDurationInHours = moment(actualCheckIn).diff(
+      lateDurationInHours += moment(actualCheckIn).diff(
         defaultCheckIn,
+        "hours",
+        true
+      );
+    } else if (actualCheckIn < defaultCheckIn) {
+      overtimeDurationInHours += moment(defaultCheckIn).diff(
+        actualCheckIn,
         "hours",
         true
       );
     }
   }
-  // calc the overtime hours
+
   if (status === "present" && checkOutTime) {
-    const defaultCheckOut = parseTimeToDate(employee.defaultCheckOutTime, date);
+    const defaultCheckOut = parseTimeToDate(
+      employee.defaultCheckOutTime || "17:00:00",
+      date
+    );
     const actualCheckOut = parseTimeToDate(checkOutTime, date);
-    if (actualCheckOut > defaultCheckOut) {
-      overtimeDurationInHours = moment(actualCheckOut).diff(
+    if (actualCheckOut < defaultCheckOut) {
+      lateDurationInHours += moment(defaultCheckOut).diff(
+        actualCheckOut,
+        "hours",
+        true
+      );
+    } else if (actualCheckOut > defaultCheckOut) {
+      overtimeDurationInHours += moment(actualCheckOut).diff(
         defaultCheckOut,
         "hours",
         true
       );
     }
   }
+
+  lateDurationInHours = parseFloat(lateDurationInHours.toFixed(2));
+  overtimeDurationInHours = parseFloat(overtimeDurationInHours.toFixed(2));
 
   const attendance = await attendanceModel.create({
     employeeId,

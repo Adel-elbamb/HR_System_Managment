@@ -24,10 +24,8 @@ export const updateAttendance = asyncHandler(async (req, res, next) => {
     return next(new AppError("Employee not found", 404));
   }
 
-  let lateDurationInHours = attendance.lateDurationInHours;
-  let overtimeDurationInHours = attendance.overtimeDurationInHours;
-  lateDurationInHours = parseFloat(lateDurationInHours.toFixed(2));
-  overtimeDurationInHours = parseFloat(overtimeDurationInHours.toFixed(2));
+  let lateDurationInHours = 0;
+  let overtimeDurationInHours = 0;
 
   if (checkInTime && status === "present") {
     const defaultCheckIn = parseTimeToDate(
@@ -35,10 +33,19 @@ export const updateAttendance = asyncHandler(async (req, res, next) => {
       attendance.date
     );
     const actualCheckIn = parseTimeToDate(checkInTime, attendance.date);
-    lateDurationInHours =
-      actualCheckIn > defaultCheckIn
-        ? moment(actualCheckIn).diff(defaultCheckIn, "hours", true)
-        : 0;
+    if (actualCheckIn > defaultCheckIn) {
+      lateDurationInHours += moment(actualCheckIn).diff(
+        defaultCheckIn,
+        "hours",
+        true
+      );
+    } else if (actualCheckIn < defaultCheckIn) {
+      overtimeDurationInHours += moment(defaultCheckIn).diff(
+        actualCheckIn,
+        "hours",
+        true
+      );
+    }
   }
   if (checkOutTime && status === "present") {
     const defaultCheckOut = parseTimeToDate(
@@ -46,11 +53,22 @@ export const updateAttendance = asyncHandler(async (req, res, next) => {
       attendance.date
     );
     const actualCheckOut = parseTimeToDate(checkOutTime, attendance.date);
-    overtimeDurationInHours =
-      actualCheckOut > defaultCheckOut
-        ? moment(actualCheckOut).diff(defaultCheckOut, "hours", true)
-        : 0;
+    if (actualCheckOut < defaultCheckOut) {
+      lateDurationInHours += moment(defaultCheckOut).diff(
+        actualCheckOut,
+        "hours",
+        true
+      );
+    } else if (actualCheckOut > defaultCheckOut) {
+      overtimeDurationInHours += moment(actualCheckOut).diff(
+        defaultCheckOut,
+        "hours",
+        true
+      );
+    }
   }
+  lateDurationInHours = parseFloat(lateDurationInHours.toFixed(2));
+  overtimeDurationInHours = parseFloat(overtimeDurationInHours.toFixed(2));
 
   const updatedAttendance = await attendanceModel.findByIdAndUpdate(
     id,

@@ -1,5 +1,6 @@
 import employeeModel from "../../DB/models/Employee.model.js";
 import payrollModel from "../../DB/models/Payroll.model.js";
+import getCurrentMonthDaysCount from "./CurrentMonthDaysCount.js";
 
 const UpdatePayrollOnSaveAttendance = async (doc) => {
   if (!doc) return;
@@ -17,6 +18,44 @@ const UpdatePayrollOnSaveAttendance = async (doc) => {
   });
 
   if (!empPayroll) {
+    const monthDays = getCurrentMonthDaysCount();
+    let attendedDays = 0;
+    let absentDays = 0;
+    let totalOvertime = 0;
+    let totalDeduction = 0;
+    let totalBonusAmount = 0;
+    let totalDeductionAmount = 0;
+    let netSalary = employee.salary;
+    if (doc.status === "present") {
+      attendedDays += 1;
+    } else {
+      absentDays += 1;
+    }
+    if (doc.overtimeDurationInHours > 0) {
+      totalOvertime += doc.overtimeDurationInHours;
+      totalBonusAmount += doc.overtimeDurationInHours * employee.overtimeValue;
+      netSalary += doc.overtimeDurationInHours * employee.overtimeValue;
+    }
+
+    if (doc.lateDurationInHours > 0) {
+      totalDeduction += doc.lateDurationInHours;
+      totalDeductionAmount += doc.lateDurationInHours * employee.deductionValue;
+      netSalary -= doc.lateDurationInHours * employee.deductionValue;
+    }
+    const payrollEntries = {
+      employeeId: employee._id,
+      month: currentMonth,
+      year: currentYear,
+      monthDays,
+      attendedDays,
+      absentDays,
+      totalOvertime,
+      totalBonusAmount,
+      totalDeduction,
+      totalDeductionAmount,
+      netSalary,
+    };
+    await payrollModel.create(payrollEntries);
     return;
   }
 
