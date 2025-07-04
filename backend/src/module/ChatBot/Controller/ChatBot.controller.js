@@ -1,6 +1,6 @@
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import AppError from "../../../utils/AppError.js";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // System prompt that defines the chatbot's capabilities and context
 const SYSTEM_PROMPT = `You are an AI assistant for an HR Management System. You can help with the following areas:
@@ -75,12 +75,10 @@ export const chatBotController = asyncHandler(async (req, res, next) => {
 
   try {
     // Initialize Google Gemini AI with API key
-    const genAI = new GoogleGenAI({
-      apiKey: process.env.BOT_KEY,
-    });
+    const genAI = new GoogleGenerativeAI(process.env.BOT_KEY);
 
     // Initialize the model
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Create the full prompt with user question
     const fullPrompt = `${SYSTEM_PROMPT}
