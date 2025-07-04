@@ -4,8 +4,8 @@ import holidayModel  from "../../../../DB/models/Holiday.model.js";
 
 export const deleteHoliday = asyncHandler(async (req,res,next) => {
     const {id} = req.params 
-
-    const deleteHoliday = await holidayModel.findOneAndDelete(id)
+    console.log(id)
+    const deleteHoliday = await holidayModel.findByIdAndDelete(id)
     if (!deleteHoliday) {
         next(AppError("holiday is not found " , 404))
     }

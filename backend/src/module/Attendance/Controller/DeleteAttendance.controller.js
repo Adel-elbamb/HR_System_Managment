@@ -4,7 +4,8 @@ import AppError from '../../../utils/AppError.js'
 
 
 export const deleteAttendance = asyncHandler(async (req, res, next) => {
-    const {id} = req.params;
+    const { id } = req.params;
+    
     const attendance = await attendanceModel.findByIdAndDelete(id);
     if(!attendance) return next(new AppError('No such attendance found', 404));
     res.status(200).json({
