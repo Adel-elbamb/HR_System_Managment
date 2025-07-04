@@ -1,12 +1,13 @@
 import mongoose from "mongoose";
-import monthlyPayroll from "../cron/EmployeesPayroll.js";
+// Only import for side effects; cron job is registered on import
+import "../cron/EmployeesPayroll.js";
 
 const connection = () => {
   mongoose
     .connect(process.env.URL)
     .then(() => {
       console.log("connection successfully");
-      monthlyPayroll();
+      // monthlyPayroll(); // No longer needed
     })
     .catch((error) => {
       console.log("connection failed", error);
