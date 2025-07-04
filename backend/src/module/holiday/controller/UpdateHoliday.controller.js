@@ -1,6 +1,6 @@
 import { asyncHandler } from "../../../utils/asyncHandler.js";
-import  AppError  from "../../../utils/AppError.js";
-import holidayModel  from "../../../../DB/models/Holiday.model.js";
+import AppError from "../../../utils/AppError.js";
+import holidayModel from "../../../../DB/models/Holiday.model.js";
 
 export const updateHoliday = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
@@ -10,9 +10,11 @@ export const updateHoliday = asyncHandler(async (req, res, next) => {
   if (date) {
     const holidayDate = new Date(date);
     const today = new Date();
-    
+
     if (holidayDate <= today) {
-      return next(new AppError("Holiday date cannot be today or in the past", 400));
+      return next(
+        new AppError("Holiday date cannot be today or in the past", 400)
+      );
     }
   }
 
@@ -29,6 +31,6 @@ export const updateHoliday = asyncHandler(async (req, res, next) => {
   return res.status(200).json({
     success: true,
     message: "Holiday updated successfully",
-    holiday: updateHoliday
+    holiday: updateHoliday,
   });
 });

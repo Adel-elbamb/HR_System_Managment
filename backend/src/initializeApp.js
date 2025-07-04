@@ -7,6 +7,7 @@ import AttendanceRouter from "./module/Attendance/Attendance.routes.js";
 import holidayRouter from "./module/holiday/holiday.routes.js";
 import departmentRouter from "./module/Department/Department.routes.js";
 import EmployeeRouter from "./module/Employee/Employee.routes.js";
+import chatBotRouter from "./module/ChatBot/ChatBot.routes.js";
 import { auth } from "./middleware/auth.js";
 
 const initializeApp = (app, express) => {
@@ -21,6 +22,7 @@ const initializeApp = (app, express) => {
   app.use("/api/employee", EmployeeRouter);
   app.use("/api/department", departmentRouter);
   app.use("/api/payroll", PayRoll);
+  app.use("/api/chatbot", chatBotRouter);
 
   app.use(globalError);
   app.use("/{*any}", (req, res, next) => {
