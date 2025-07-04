@@ -6,6 +6,16 @@ export const updateHoliday = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { date, name } = req.body;
 
+  // Validate that the holiday date is not today or in the past
+  if (date) {
+    const holidayDate = new Date(date);
+    const today = new Date();
+    
+    if (holidayDate <= today) {
+      return next(new AppError("Holiday date cannot be today or in the past", 400));
+    }
+  }
+
   const updateHoliday = await holidayModel.findByIdAndUpdate(
     id,
     { name, date },
