@@ -42,6 +42,8 @@ const UpdatePayrollOnSaveAttendance = async (doc) => {
       totalDeductionAmount += doc.lateDurationInHours * employee.deductionValue;
       netSalary -= doc.lateDurationInHours * employee.deductionValue;
     }
+    // Ensure netSalary is not negative
+    netSalary = Math.max(netSalary, 0);
     const payrollEntries = {
       employeeId: employee._id,
       month: currentMonth,
@@ -61,38 +63,36 @@ const UpdatePayrollOnSaveAttendance = async (doc) => {
 
   if (doc.status === "present") {
     empPayroll.attendedDays += 1;
+    if (doc.overtimeDurationInHours > 0) {
+      empPayroll.totalOvertime += doc.overtimeDurationInHours;
+      empPayroll.totalBonusAmount +=
+        doc.overtimeDurationInHours * employee.overtimeValue;
+      empPayroll.netSalary +=
+        doc.overtimeDurationInHours * employee.overtimeValue;
+    }
+
+    if (doc.lateDurationInHours > 0) {
+      empPayroll.totalDeduction += doc.lateDurationInHours;
+      empPayroll.totalDeductionAmount +=
+        doc.lateDurationInHours * employee.deductionValue;
+      empPayroll.netSalary -= doc.lateDurationInHours * employee.deductionValue;
+    }
+    await empPayroll.save();
   } else {
     empPayroll.absentDays += 1;
+    // After updating attendedDays, absentDays, totalOvertime, totalDeduction, totalBonusAmount, and totalDeductionAmount, calculate absent deduction and update netSalary
+    // Calculate absent deduction using salaryPerHour
+    const absentDeduction =
+      employee.workingHoursPerDay *
+      employee.salaryPerHour;
+    // Late deduction uses deductionValue
+    empPayroll.totalDeductionAmount +=  absentDeduction;
+    empPayroll.netSalary -=
+      empPayroll.totalDeductionAmount;
+    // Ensure netSalary is not negative
+    await empPayroll.save();
   }
 
-  if (doc.overtimeDurationInHours > 0) {
-    empPayroll.totalOvertime += doc.overtimeDurationInHours;
-    empPayroll.totalBonusAmount +=
-      doc.overtimeDurationInHours * employee.overtimeValue;
-    empPayroll.netSalary +=
-      doc.overtimeDurationInHours * employee.overtimeValue;
-  }
-
-  if (doc.lateDurationInHours > 0) {
-    empPayroll.totalDeduction += doc.lateDurationInHours;
-    empPayroll.totalDeductionAmount +=
-      doc.lateDurationInHours * employee.deductionValue;
-    empPayroll.netSalary -= doc.lateDurationInHours * employee.deductionValue;
-  }
-  // After updating attendedDays, absentDays, totalOvertime, totalDeduction, totalBonusAmount, and totalDeductionAmount, calculate absent deduction and update netSalary
-  // Calculate absent deduction using salaryPerHour
-  const absentDeduction =
-    empPayroll.absentDays *
-    employee.workingHoursPerDay *
-    employee.salaryPerHour;
-  // Late deduction uses deductionValue
-  const lateDeduction = empPayroll.totalDeduction * employee.deductionValue;
-  empPayroll.totalDeductionAmount = lateDeduction + absentDeduction;
-  empPayroll.netSalary =
-    employee.salary +
-    empPayroll.totalBonusAmount -
-    empPayroll.totalDeductionAmount;
-  await empPayroll.save();
   console.log("Updated Payroll Successfully after Update Attendance");
 };
 

@@ -17,6 +17,9 @@ const parseTimeToDate = (timeString, dateObj) => {
 export const addAttendance = asyncHandler(async (req, res, next) => {
   const { employeeId, checkInTime, checkOutTime, status } = req.body;
 
+  // Ensure date is only the date part (no timestamp)
+  let date = new Date(new Date().toDateString());
+
   if (!employeeId || !checkInTime || !checkOutTime || !status) {
     return next(new AppError("Please fill all the fields"));
   }
@@ -26,7 +29,6 @@ export const addAttendance = asyncHandler(async (req, res, next) => {
     return next(new AppError("Employee not found"));
   }
 
-  let date = new Date();
   // check if holiday or not
   const holiday = await holidayModel.findOne({ date });
   if (holiday) {

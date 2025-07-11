@@ -6,7 +6,8 @@ import moment from "moment";
 
 // This cron job runs every day at 6 PM to mark absentees
 cron.schedule("0 18 * * *", async () => {
-  const today = moment().startOf("day").toDate();
+  // Ensure today is only the date part (no timestamp)
+  const today = new Date(new Date().toDateString());
   const employees = await employeeModel.find();
   const holidays = await holidayModel.find({ date: today });
   const holidayDates = holidays.map((h) => moment(h.date).format("YYYY-MM-DD"));
@@ -21,19 +22,20 @@ cron.schedule("0 18 * * *", async () => {
     ) {
       continue;
     }
-    // Check if attendance already exists for today
+    // Check if attendance already exists for today (date only)
     const attendance = await attendanceModel.findOne({
       employeeId: emp._id,
       date: today,
+      isDeleted: false,
     });
     if (!attendance) {
-      // If no attendance, mark as absent
+      // If no attendance, mark as absent (date only)
       await attendanceModel.create({
         employeeId: emp._id,
         date: today,
         status: "absent",
-        checkInTime: null,
-        checkOutTime: null,
+        checkInTime: "00:00",
+        checkOutTime: "00:00",
         lateDurationInHours: 0,
         overtimeDurationInHours: 0,
       });

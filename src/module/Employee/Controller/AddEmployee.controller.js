@@ -39,7 +39,7 @@ export const addEmployee = asyncHandler(async (req, res, next) => {
   const checkIn = getHourDecimal(defaultCheckInTime, "in");
   const checkOut = getHourDecimal(defaultCheckOutTime, "out");
   const hoursWorked = checkOut - checkIn;
-
+  const workingHoursPerDay = checkOut - checkIn;
   let salaryPerHour = 0;
   if (
     typeof salary === "number" &&
@@ -78,6 +78,7 @@ export const addEmployee = asyncHandler(async (req, res, next) => {
     email,
     phone,
     salary,
+    workingHoursPerDay,
     address,
     defaultCheckInTime,
     defaultCheckOutTime,

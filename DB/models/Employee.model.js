@@ -99,7 +99,6 @@ const EmployeeSchema = new Schema(
 
 EmployeeSchema.pre("save", function (next) {
   this.hireDate = new Date();
-  this.workingHoursPerDay = this.defaultCheckOutTime - this.defaultCheckInTime;
   next();
 });
 
@@ -151,6 +150,9 @@ EmployeeSchema.post("save", async function (doc) {
   const absentDays = doc.hireDate.getDate() - 1;
   const currentMonth = new Date().getMonth() + 1; // 1-12
   const currentYear = new Date().getFullYear();
+  const totalDeductionAmount =
+    absentDays * doc.workingHoursPerDay * doc.salaryPerHour;
+  const netSalary = doc.salary - totalDeductionAmount;
   const payroll = new payrollModel({
     employeeId: doc._id,
     month: currentMonth,
@@ -161,8 +163,8 @@ EmployeeSchema.post("save", async function (doc) {
     totalOvertime: 0,
     totalBonusAmount: 0,
     totalDeduction: 0,
-    totalDeductionAmount: 0,
-    netSalary: 0,
+    totalDeductionAmount,
+    netSalary,
   });
   await payroll.save();
 });

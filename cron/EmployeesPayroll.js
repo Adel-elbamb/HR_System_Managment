@@ -10,7 +10,7 @@ cron.schedule(
     console.log("\u{1F4BC} Generating payroll entries for new month...");
 
     try {
-      const employees = await employeeModel.find();
+      const employees = await employeeModel.find({ isDeleted: false });
 
       const currentMonth = new Date().getMonth() + 1; // 1-12
       const currentYear = new Date().getFullYear();
