@@ -131,6 +131,36 @@ const testExamples = {
   ],
 };
 
+// --- Autonomous Project-Aware Query Tests ---
+testExamples.autonomousQueryQuestions = [
+  {
+    question:
+      "List all employees in the IT department who were absent last Friday.",
+    description:
+      "Cross-model query: Employee + Department + Attendance, with date filter.",
+  },
+  {
+    question:
+      "Show payroll records for employees with more than 2 absences this month.",
+    description: "Payroll query with filter on absentDays.",
+  },
+  {
+    question:
+      "Which departments have employees with overtime hours greater than 10 this month?",
+    description: "Department + Employee + Attendance/Payroll aggregation.",
+  },
+  {
+    question: "Find all holidays in December 2024.",
+    description: "Holiday model, date filter.",
+  },
+  {
+    question:
+      "Show me the net salary and total deduction for all employees in the Sales department for last month.",
+    description:
+      "Payroll + Employee + Department, with field selection and time filter.",
+  },
+];
+
 // Function to make API call to chatbot
 async function testChatbot(question) {
   try {
@@ -162,10 +192,16 @@ async function testCategory(categoryName, questions) {
 
     const result = await testChatbot(question);
 
-    if (result.success) {
+    // Log the full result for analysis
+    console.log("Raw result:", JSON.stringify(result, null, 2));
+    if (result.success && result.data && result.data.answer) {
       console.log(`Answer: ${result.data.answer.substring(0, 200)}...`);
-    } else {
+    } else if (result.message || result.error) {
       console.log(`Error: ${result.message || result.error}`);
+    } else if (result.results) {
+      console.log(`Results: ${JSON.stringify(result.results, null, 2)}`);
+    } else {
+      console.log("No answer or error returned.");
     }
 
     // Add delay between requests to avoid rate limiting
@@ -183,6 +219,10 @@ async function runAllTests() {
   await testCategory("Department Management", testExamples.departmentQuestions);
   await testCategory("Holiday Management", testExamples.holidayQuestions);
   await testCategory("General System Questions", testExamples.generalQuestions);
+  await testCategory(
+    "Autonomous Project-Aware Queries",
+    testExamples.autonomousQueryQuestions
+  );
 
   console.log("\n=== All Tests Completed ===");
 }
@@ -266,3 +306,8 @@ export default {
   chatbotTestUtils,
   curlExamples,
 };
+
+// Run all tests if this script is executed directly
+if (require.main === module) {
+  runAllTests();
+}

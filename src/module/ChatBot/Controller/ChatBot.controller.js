@@ -7,6 +7,97 @@ import departmentModel from "../../../../DB/models/Department.model.js";
 import attendanceModel from "../../../../DB/models/Attendence.model.js";
 import payrollModel from "../../../../DB/models/Payroll.model.js";
 import holidayModel from "../../../../DB/models/Holiday.model.js";
+import hrModel from "../../../../DB/models/HR.model.js";
+
+// --- Model Introspection Utility ---
+import fs from "fs";
+import path from "path";
+import mongoose from "mongoose";
+
+async function getAllModelsAndFields() {
+  const modelsDir = path.resolve("DB/models");
+  const modelFiles = fs.readdirSync(modelsDir).filter((f) => f.endsWith(".js"));
+  const models = {};
+  for (const file of modelFiles) {
+    const modelPath = path.join(modelsDir, file);
+    const modelModule = await import("file://" + modelPath);
+    const modelExport = modelModule.default || modelModule;
+    if (modelExport && modelExport.modelName && modelExport.schema) {
+      models[modelExport.modelName] = Object.keys(modelExport.schema.paths);
+    }
+  }
+  return models;
+}
+
+let PROJECT_MODELS = {};
+
+// --- Natural Language Query Parser ---
+/**
+ * Parses a user question and tries to extract the model, fields, and filters.
+ * This is a basic version and can be improved for more complex queries.
+ * @param {string} question
+ * @param {object} modelsMap
+ * @returns {object} { model, fields, filters }
+ */
+function parseUserQuery(question, modelsMap) {
+  const lowerQ = question.toLowerCase();
+  // Try to find which model is being referenced
+  let foundModel = null;
+  for (const modelName of Object.keys(modelsMap)) {
+    if (lowerQ.includes(modelName.toLowerCase())) {
+      foundModel = modelName;
+      break;
+    }
+  }
+  // Try to extract fields
+  let foundFields = [];
+  if (foundModel) {
+    for (const field of modelsMap[foundModel]) {
+      if (lowerQ.includes(field.toLowerCase())) {
+        foundFields.push(field);
+      }
+    }
+  }
+  // Try to extract simple filters (e.g., by field value)
+  let filters = {};
+  if (foundModel) {
+    for (const field of modelsMap[foundModel]) {
+      const regex = new RegExp(`${field} (is|=|equals|to) ([^,?]+)`, "i");
+      const match = question.match(regex);
+      if (match) {
+        filters[field] = match[2].trim();
+      }
+    }
+  }
+  return { model: foundModel, fields: foundFields, filters };
+}
+
+// --- Dynamic Query Builder ---
+/**
+ * Executes a dynamic Mongoose query based on the parsed user query.
+ * @param {object} parsedQuery { model, fields, filters }
+ * @returns {Promise<any>} Query result or null
+ */
+async function executeDynamicQuery(parsedQuery) {
+  if (!parsedQuery.model) return null;
+  // Map model name to imported model
+  const modelMap = {
+    Employee: employeeModel,
+    Department: departmentModel,
+    Attendance: attendanceModel,
+    Payroll: payrollModel,
+    OfficialHoliday: holidayModel,
+    HR: hrModel,
+  };
+  const model = modelMap[parsedQuery.model];
+  if (!model) return null;
+  let query = model.find(parsedQuery.filters || {});
+  if (parsedQuery.fields && parsedQuery.fields.length > 0) {
+    query = query.select(parsedQuery.fields.join(" "));
+  }
+  // TODO: Add population and aggregation support as needed
+  return await query.exec();
+}
 
 // System prompt that defines the chatbot's capabilities and context
 const SYSTEM_PROMPT = `You are an AI assistant for an HR Management System. You can help with the following areas:
@@ -246,6 +337,11 @@ You have access to the following data models and their fields:
 Remember: You are specifically designed to help with this HR Management System. Stay focused on the system's capabilities and provide practical, actionable advice for using the web interface.`;
 
 export const chatBotController = asyncHandler(async (req, res, next) => {
+  // Ensure PROJECT_MODELS is loaded
+  if (Object.keys(PROJECT_MODELS).length === 0) {
+    PROJECT_MODELS = await getAllModelsAndFields();
+  }
+
   const { question } = req.body;
 
   if (!process.env.BOT_KEY) {
@@ -253,308 +349,594 @@ export const chatBotController = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    const lowerQ = question.toLowerCase();
-    // General-purpose question parser and database search logic
-    let generalResultText = "";
-    let found = false;
-    // Extract keywords
-    const keywords = lowerQ.split(/\W+/).filter(Boolean);
-    // Helper: extract time filter
-    function extractTimeFilter(q) {
-      const now = new Date();
-      let month = null,
-        year = null;
-      let filterText = "";
-      if (/last month/i.test(q)) {
-        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        month = lastMonth.getMonth() + 1;
-        year = lastMonth.getFullYear();
-        filterText = "last month";
-      } else if (/this month/i.test(q)) {
-        month = now.getMonth() + 1;
-        year = now.getFullYear();
-        filterText = "this month";
+    // --- Smart Multi-Model Query Handler ---
+    const q = question.toLowerCase();
+    // Pattern: Which employees in the [department] were [status] on [date]?
+    const deptMatch = q.match(/in the ([a-zA-Z ]+) department/);
+    const statusMatch = q.match(/were ([a-zA-Z ]+)(?: on|$)/);
+    const dateMatch = q.match(
+      /last friday|today|yesterday|on ([a-zA-Z0-9 ,\/]+)/
+    );
+    if (deptMatch && statusMatch) {
+      // 1. Find department
+      const deptName = deptMatch[1].trim();
+      const department = await departmentModel.findOne({
+        departmentName: new RegExp(deptName, "i"),
+      });
+      if (!department) {
+        return res.status(200).json({
+          message: `No department found with name '${deptName}'.`,
+          results: [],
+        });
+      }
+      // 2. Find employees in department
+      const employees = await employeeModel.find({
+        department: department._id,
+      });
+      if (!employees.length) {
+        return res.status(200).json({
+          message: `No employees found in department '${deptName}'.`,
+          results: [],
+        });
+      }
+      // 3. Find attendance records for those employees with status and date
+      const empIds = employees.map((e) => e._id);
+      let status = statusMatch[1].trim().toLowerCase();
+      if (
+        status === "absent" ||
+        status === "present" ||
+        status === "on leave"
+      ) {
+        // 4. Date logic
+        let date;
+        if (dateMatch) {
+          if (dateMatch[0].includes("last friday")) {
+            // Calculate last Friday
+            const now = new Date();
+            const day = now.getDay();
+            const diff = day >= 5 ? day - 5 : 7 - (5 - day);
+            const lastFriday = new Date(now);
+            lastFriday.setDate(now.getDate() - diff - 7);
+            date = new Date(lastFriday.toDateString());
+          } else if (dateMatch[0].includes("today")) {
+            date = new Date(new Date().toDateString());
+          } else if (dateMatch[0].includes("yesterday")) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            date = new Date(yesterday.toDateString());
+          } else if (dateMatch[1]) {
+            date = new Date(dateMatch[1]);
+          }
+        }
+        let attQuery = {
+          employeeId: { $in: empIds },
+          status: new RegExp(status, "i"),
+        };
+        if (date) attQuery.date = date;
+        const attendance = await attendanceModel
+          .find(attQuery)
+          .populate("employeeId", "firstName lastName");
+        if (!attendance.length) {
+          return res.status(200).json({
+            message: `No employees in ${deptName} were ${status}${
+              date ? " on " + date.toDateString() : ""
+            }.`,
+            results: [],
+          });
+        }
+        const names = attendance.map(
+          (a) => `${a.employeeId.firstName} ${a.employeeId.lastName}`
+        );
+        return res.status(200).json({
+          message: `The following employees in ${deptName} were ${status}${
+            date ? " on " + date.toDateString() : ""
+          }: ${names.join(", ")}`,
+          results: names,
+        });
+      }
+    }
+    // Pattern: How many employees attended today
+    if (/how many employees attended today/.test(q)) {
+      const today = new Date(new Date().toDateString());
+      const attendance = await attendanceModel.find({
+        date: today,
+        status: /present/i,
+      });
+      return res.status(200).json({
+        message: `Number of employees who attended today: ${attendance.length}`,
+        results: attendance.map((a) => a.employeeId),
+      });
+    }
+    // --- End Smart Handler ---
+
+    // --- Full Report Handler ---
+    const fullReportMatch = q.match(/full report about ([a-zA-Z ]+)/);
+    if (fullReportMatch) {
+      const name = fullReportMatch[1].trim();
+      // Find employee by name (first, last, or full name)
+      const employees = await employeeModel
+        .find({
+          $or: [
+            { firstName: new RegExp(name, "i") },
+            { lastName: new RegExp(name, "i") },
+          ],
+        })
+        .populate("department");
+      // Try to match full name if multiple or no results
+      let employee = null;
+      if (employees.length === 1) {
+        employee = employees[0];
+      } else if (employees.length > 1) {
+        employee = employees.find(
+          (e) =>
+            `${e.firstName} ${e.lastName}`.toLowerCase() === name.toLowerCase()
+        );
+      }
+      if (!employee) {
+        // Try direct full name match if not found
+        employee = await employeeModel
+          .findOne({
+            $expr: {
+              $eq: [{ $concat: ["$firstName", " ", "$lastName"] }, name],
+            },
+          })
+          .populate("department");
+      }
+      if (!employee) {
+        return res
+          .status(200)
+          .json({
+            message: `No employee found with name '${name}'.`,
+            results: [],
+          });
+      }
+      // Gather attendance (last 5 records)
+      const attendanceRecords = await attendanceModel
+        .find({ employeeId: employee._id })
+        .sort({ date: -1 })
+        .limit(5);
+      // Gather payroll (latest record)
+      const payroll = await payrollModel
+        .findOne({ employeeId: employee._id })
+        .sort({ year: -1, month: -1 });
+      // Format report
+      let report = `Full Report for ${employee.firstName} ${employee.lastName} (ID: ${employee._id}):\n`;
+      report += `- Department: ${
+        employee.department?.departmentName || "N/A"
+      }\n`;
+      report += `- Email: ${employee.email || "N/A"}\n`;
+      report += `- Phone: ${employee.phone || "N/A"}\n`;
+      report += `- Hire Date: ${
+        employee.hireDate
+          ? employee.hireDate.toISOString().split("T")[0]
+          : "N/A"
+      }\n`;
+      report += `- Salary: ${employee.salary || "N/A"}\n`;
+      report += `- Working Hours/Day: ${
+        employee.workingHoursPerDay || "N/A"
+      }\n`;
+      report += `- Overtime Value: ${employee.overtimeValue || "N/A"}\n`;
+      report += `- Deduction Value: ${employee.deductionValue || "N/A"}\n`;
+      report += `\nAttendance (Last 5 Records):\n`;
+      if (attendanceRecords.length) {
+        attendanceRecords.forEach((a) => {
+          report += `  - ${a.date.toISOString().split("T")[0]}: ${
+            a.status
+          }, Check-in: ${a.checkInTime || "N/A"}, Check-out: ${
+            a.checkOutTime || "N/A"
+          }, Late: ${a.lateDurationInHours || 0}h, Overtime: ${
+            a.overtimeDurationInHours || 0
+          }h\n`;
+        });
       } else {
-        const m = q.match(/in ([a-zA-Z]+)(?: (\d{4}))?/i);
-        if (m) {
-          month = new Date(Date.parse(m[1] + " 1, 2000")).getMonth() + 1;
-          year = m[2] ? parseInt(m[2]) : now.getFullYear();
-          filterText = m[0];
+        report += "  No attendance records found.\n";
+      }
+      report += `\nPayroll (Latest):\n`;
+      if (payroll) {
+        report += `  - Month/Year: ${payroll.month}/${payroll.year}\n`;
+        report += `  - Net Salary: ${payroll.netSalary}\n`;
+        report += `  - Attended Days: ${payroll.attendedDays}\n`;
+        report += `  - Absent Days: ${payroll.absentDays}\n`;
+        report += `  - Overtime: ${payroll.totalOvertime}h (Bonus: ${payroll.totalBonusAmount})\n`;
+        report += `  - Late: ${payroll.totalDeduction}h (Deduction: ${payroll.totalDeductionAmount})\n`;
+      } else {
+        report += "  No payroll records found.\n";
+      }
+      return res.status(200).json({ message: report, results: [employee._id] });
+    }
+    // --- End Full Report Handler ---
+
+    // --- New Autonomous Project-Aware Logic ---
+    // 1. Parse the question
+    const parsedQuery = parseUserQuery(question, PROJECT_MODELS);
+    // 2. If a model is found, execute the query
+    if (parsedQuery.model) {
+      const result = await executeDynamicQuery(parsedQuery);
+      // 3. Format a concise, relevant answer
+      if (result && result.length > 0) {
+        // Try to extract key fields for a human-friendly summary
+        let summary = "";
+        if (parsedQuery.model === "Employee") {
+          summary = result
+            .map((r) => `${r.firstName || ""} ${r.lastName || ""}`.trim())
+            .filter(Boolean)
+            .join(", ");
+          if (summary) summary = `Employees: ${summary}`;
+        } else if (parsedQuery.model === "Department") {
+          summary = result
+            .map((r) => r.departmentName)
+            .filter(Boolean)
+            .join(", ");
+          if (summary) summary = `Departments: ${summary}`;
+        } else if (parsedQuery.model === "Attendance") {
+          summary = result
+            .map((r) =>
+              `${r.employeeId?.firstName || ""} ${
+                r.employeeId?.lastName || ""
+              }`.trim()
+            )
+            .filter(Boolean)
+            .join(", ");
+          if (summary) summary = `Attendance records for: ${summary}`;
+        } else if (parsedQuery.model === "Payroll") {
+          summary = result
+            .map(
+              (r) =>
+                `${r.employeeId?.firstName || ""} ${
+                  r.employeeId?.lastName || ""
+                }: Net Salary ${r.netSalary}`
+            )
+            .filter(Boolean)
+            .join("; ");
+          if (summary) summary = `Payroll: ${summary}`;
+        } else if (parsedQuery.model === "OfficialHoliday") {
+          summary = result
+            .map((r) => `${r.name} (${r.date})`)
+            .filter(Boolean)
+            .join(", ");
+          if (summary) summary = `Holidays: ${summary}`;
+        } else if (parsedQuery.model === "HR") {
+          summary = result
+            .map((r) => r.name)
+            .filter(Boolean)
+            .join(", ");
+          if (summary) summary = `HRs: ${summary}`;
+        }
+        if (!summary)
+          summary = `Found ${result.length} result(s) for your query on ${parsedQuery.model}.`;
+        return res.status(200).json({
+          message: summary,
+          results: result.slice(0, 3),
+        });
+      } else {
+        return res.status(200).json({
+          message: `No results found for your query on ${parsedQuery.model}.`,
+          results: [],
+        });
+      }
+    }
+    // --- End New Logic ---
+
+    if (!process.env.BOT_KEY) {
+      return next(new AppError("Chatbot service is not configured", 500));
+    }
+
+    try {
+      const lowerQ = question.toLowerCase();
+      // General-purpose question parser and database search logic
+      let generalResultText = "";
+      let found = false;
+      // Extract keywords
+      const keywords = lowerQ.split(/\W+/).filter(Boolean);
+      // Helper: extract time filter
+      function extractTimeFilter(q) {
+        const now = new Date();
+        let month = null,
+          year = null;
+        let filterText = "";
+        if (/last month/i.test(q)) {
+          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          month = lastMonth.getMonth() + 1;
+          year = lastMonth.getFullYear();
+          filterText = "last month";
+        } else if (/this month/i.test(q)) {
+          month = now.getMonth() + 1;
+          year = now.getFullYear();
+          filterText = "this month";
+        } else {
+          const m = q.match(/in ([a-zA-Z]+)(?: (\d{4}))?/i);
+          if (m) {
+            month = new Date(Date.parse(m[1] + " 1, 2000")).getMonth() + 1;
+            year = m[2] ? parseInt(m[2]) : now.getFullYear();
+            filterText = m[0];
+          }
+        }
+        return { month, year, filterText };
+      }
+      // Check for employee name
+      let empName = null;
+      let emp = null;
+      let employees = [];
+      // Try to extract a name (assume name is after 'for' or 'of')
+      let nameMatch = question.match(/(?:for|of) (employee )?([a-zA-Z ]+)/i);
+      let timeFilter = extractTimeFilter(question);
+      if (nameMatch) {
+        empName = nameMatch[2].trim();
+        // Remove time filter text from name if present
+        if (timeFilter.filterText) {
+          empName = empName
+            .replace(new RegExp(timeFilter.filterText, "i"), "")
+            .trim();
         }
       }
-      return { month, year, filterText };
-    }
-    // Check for employee name
-    let empName = null;
-    let emp = null;
-    let employees = [];
-    // Try to extract a name (assume name is after 'for' or 'of')
-    let nameMatch = question.match(/(?:for|of) (employee )?([a-zA-Z ]+)/i);
-    let timeFilter = extractTimeFilter(question);
-    if (nameMatch) {
-      empName = nameMatch[2].trim();
-      // Remove time filter text from name if present
-      if (timeFilter.filterText) {
-        empName = empName
-          .replace(new RegExp(timeFilter.filterText, "i"), "")
-          .trim();
-      }
-    }
-    if (empName) {
-      const nameParts = empName.split(" ").filter(Boolean);
-      if (nameParts.length === 1) {
-        employees = await employeeModel.find({
-          $or: [
-            { firstName: new RegExp(nameParts[0], "i") },
-            { lastName: new RegExp(nameParts[0], "i") },
-          ],
-        });
-      } else if (nameParts.length >= 2) {
-        emp = await employeeModel.findOne({
-          firstName: new RegExp(nameParts[0], "i"),
-          lastName: new RegExp(nameParts.slice(1).join(" "), "i"),
-        });
-        if (!emp) {
+      if (empName) {
+        const nameParts = empName.split(" ").filter(Boolean);
+        if (nameParts.length === 1) {
           employees = await employeeModel.find({
             $or: [
               { firstName: new RegExp(nameParts[0], "i") },
-              { lastName: new RegExp(nameParts[nameParts.length - 1], "i") },
+              { lastName: new RegExp(nameParts[0], "i") },
             ],
           });
+        } else if (nameParts.length >= 2) {
+          emp = await employeeModel.findOne({
+            firstName: new RegExp(nameParts[0], "i"),
+            lastName: new RegExp(nameParts.slice(1).join(" "), "i"),
+          });
+          if (!emp) {
+            employees = await employeeModel.find({
+              $or: [
+                { firstName: new RegExp(nameParts[0], "i") },
+                { lastName: new RegExp(nameParts[nameParts.length - 1], "i") },
+              ],
+            });
+          } else {
+            employees = [emp];
+          }
+        }
+        if (employees.length === 1) {
+          emp = employees[0];
+        } else if (employees.length > 1) {
+          const names = employees
+            .map((e) => `${e.firstName} ${e.lastName || ""}`.trim())
+            .join(", ");
+          generalResultText = `Multiple employees found matching '${empName}': ${names}. Please specify the full name.`;
+          found = true;
         } else {
-          employees = [emp];
+          generalResultText = `Employee '${empName}' does not exist.`;
+          found = true;
         }
       }
-      if (employees.length === 1) {
-        emp = employees[0];
-      } else if (employees.length > 1) {
-        const names = employees
-          .map((e) => `${e.firstName} ${e.lastName || ""}`.trim())
-          .join(", ");
-        generalResultText = `Multiple employees found matching '${empName}': ${names}. Please specify the full name.`;
-        found = true;
-      } else {
-        generalResultText = `Employee '${empName}' does not exist.`;
-        found = true;
+      // If employee found, check what info is requested
+      if (emp && !found) {
+        // Net Salary/Payroll
+        if (
+          (keywords.includes("net") && keywords.includes("salary")) ||
+          keywords.includes("payroll")
+        ) {
+          let month = timeFilter.month;
+          let year = timeFilter.year;
+          let payrollQuery = { employeeId: emp._id };
+          if (month) payrollQuery.month = month;
+          if (year) payrollQuery.year = year;
+          else payrollQuery.year = new Date().getFullYear();
+          const payroll = await payrollModel.findOne(payrollQuery);
+          if (payroll) {
+            const monthName = month
+              ? new Date(2000, month - 1, 1).toLocaleString("default", {
+                  month: "long",
+                })
+              : "current month";
+            generalResultText = `The net salary for ${emp.firstName} ${
+              emp.lastName || ""
+            } in ${monthName} ${payroll.year} is ${payroll.netSalary} EGP.`;
+          } else {
+            generalResultText = `Payroll for ${emp.firstName} ${
+              emp.lastName || ""
+            } in the specified period does not exist.`;
+          }
+          found = true;
+        }
+        // Base Salary
+        else if (keywords.includes("salary")) {
+          generalResultText = `The salary for ${emp.firstName} ${
+            emp.lastName || ""
+          } is ${emp.salary} EGP.`;
+          found = true;
+        }
+        // Attendance
+        else if (keywords.includes("attendance")) {
+          const attendance = await attendanceModel.find({
+            employeeId: emp._id,
+          });
+          if (attendance.length > 0) {
+            generalResultText = `Attendance records for ${emp.firstName} ${
+              emp.lastName || ""
+            }: ${attendance.length} records.`;
+          } else {
+            generalResultText = `Attendance for ${emp.firstName} ${
+              emp.lastName || ""
+            } does not exist.`;
+          }
+          found = true;
+        }
+        // Overtime
+        else if (keywords.includes("overtime")) {
+          const payrolls = await payrollModel.find({ employeeId: emp._id });
+          if (payrolls.length > 0) {
+            const totalOvertime = payrolls.reduce(
+              (sum, p) => sum + (p.totalOvertime || 0),
+              0
+            );
+            generalResultText = `Total overtime for ${emp.firstName} ${
+              emp.lastName || ""
+            } is ${totalOvertime} hours.`;
+          } else {
+            generalResultText = `Overtime for ${emp.firstName} ${
+              emp.lastName || ""
+            } does not exist.`;
+          }
+          found = true;
+        }
+        // Department
+        else if (keywords.includes("department")) {
+          if (emp.department && emp.department.departmentName) {
+            generalResultText = `${emp.firstName} ${
+              emp.lastName || ""
+            } is in the ${emp.department.departmentName} department.`;
+          } else {
+            generalResultText = `Department for ${emp.firstName} ${
+              emp.lastName || ""
+            } does not exist.`;
+          }
+          found = true;
+        }
       }
-    }
-    // If employee found, check what info is requested
-    if (emp && !found) {
-      // Net Salary/Payroll
+      // Department info (not about employee)
+      if (!found && keywords.includes("department")) {
+        let deptNameMatch = question.match(/department (named )?([a-zA-Z ]+)/i);
+        let deptName = null;
+        if (deptNameMatch) deptName = deptNameMatch[2].trim();
+        if (deptName) {
+          const dept = await departmentModel.findOne({
+            departmentName: new RegExp(deptName, "i"),
+          });
+          if (dept) {
+            generalResultText = `Department '${dept.departmentName}' exists.`;
+          } else {
+            generalResultText = `Department '${deptName}' does not exist.`;
+          }
+          found = true;
+        }
+      }
+      // Holiday info
+      if (!found && keywords.includes("holiday")) {
+        let holidayNameMatch = question.match(/holiday (named )?([a-zA-Z ]+)/i);
+        let holidayName = null;
+        if (holidayNameMatch) holidayName = holidayNameMatch[2].trim();
+        if (holidayName) {
+          const holiday = await holidayModel.findOne({
+            name: new RegExp(holidayName, "i"),
+          });
+          if (holiday) {
+            generalResultText = `Holiday '${holiday.name}' is on ${
+              holiday.date.toISOString().split("T")[0]
+            }.`;
+          } else {
+            generalResultText = `Holiday '${holidayName}' does not exist.`;
+          }
+          found = true;
+        } else {
+          // List all holidays
+          const holidays = await holidayModel.find({});
+          if (holidays.length > 0) {
+            generalResultText = `Holidays: ${holidays
+              .map((h) => `${h.name} (${h.date.toISOString().split("T")[0]})`)
+              .join(", ")}`;
+          } else {
+            generalResultText = `No holidays exist.`;
+          }
+          found = true;
+        }
+      }
+      // If a direct answer was found, return it immediately
+      if (found && generalResultText) {
+        return res.status(200).json({
+          success: true,
+          message: "Chatbot response generated successfully",
+          data: {
+            question,
+            answer: generalResultText,
+            timestamp: new Date().toISOString(),
+            dbResult: generalResultText,
+          },
+        });
+      }
+
+      // Initialize Google Gemini AI with API key
+      const genAI = new GoogleGenerativeAI(process.env.BOT_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // Create the full prompt with user question and (if present) db result
+      const fullPrompt = `${SYSTEM_PROMPT}
+
+User Question: ${question}
+${generalResultText ? `\n${generalResultText}` : ""}
+Please provide a helpful, accurate response based on the HR system capabilities described above.`;
+
+      // Generate response
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      let text = response.text();
+      console.log(text);
+
+      // Post-process the response for conciseness
+      let conciseAnswer = text;
       if (
-        (keywords.includes("net") && keywords.includes("salary")) ||
-        keywords.includes("payroll")
+        lowerQ.includes("step") ||
+        lowerQ.includes("how do i") ||
+        lowerQ.includes("how to")
       ) {
-        let month = timeFilter.month;
-        let year = timeFilter.year;
-        let payrollQuery = { employeeId: emp._id };
-        if (month) payrollQuery.month = month;
-        if (year) payrollQuery.year = year;
-        else payrollQuery.year = new Date().getFullYear();
-        const payroll = await payrollModel.findOne(payrollQuery);
-        if (payroll) {
-          const monthName = month
-            ? new Date(2000, month - 1, 1).toLocaleString("default", {
-                month: "long",
-              })
-            : "current month";
-          generalResultText = `The net salary for ${emp.firstName} ${
-            emp.lastName || ""
-          } in ${monthName} ${payroll.year} is ${payroll.netSalary} EGP.`;
-        } else {
-          generalResultText = `Payroll for ${emp.firstName} ${
-            emp.lastName || ""
-          } in the specified period does not exist.`;
+        // Extract only the steps (numbered or bulleted list)
+        const stepsMatch = text.match(/(\d+\. .+|\- .+)([\s\S]*)/);
+        if (stepsMatch) {
+          // Get all lines that look like steps
+          const lines = text
+            .split("\n")
+            .filter((line) => line.match(/^\d+\. |^- /));
+          if (lines.length > 0) {
+            conciseAnswer = lines.join("\n");
+          }
         }
-        found = true;
-      }
-      // Base Salary
-      else if (keywords.includes("salary")) {
-        generalResultText = `The salary for ${emp.firstName} ${
-          emp.lastName || ""
-        } is ${emp.salary} EGP.`;
-        found = true;
-      }
-      // Attendance
-      else if (keywords.includes("attendance")) {
-        const attendance = await attendanceModel.find({ employeeId: emp._id });
-        if (attendance.length > 0) {
-          generalResultText = `Attendance records for ${emp.firstName} ${
-            emp.lastName || ""
-          }: ${attendance.length} records.`;
-        } else {
-          generalResultText = `Attendance for ${emp.firstName} ${
-            emp.lastName || ""
-          } does not exist.`;
-        }
-        found = true;
-      }
-      // Overtime
-      else if (keywords.includes("overtime")) {
-        const payrolls = await payrollModel.find({ employeeId: emp._id });
-        if (payrolls.length > 0) {
-          const totalOvertime = payrolls.reduce(
-            (sum, p) => sum + (p.totalOvertime || 0),
-            0
+      } else if (
+        lowerQ.includes("net salary for") ||
+        lowerQ.includes("salary for") ||
+        lowerQ.includes("attendance for") ||
+        lowerQ.includes("payroll for")
+      ) {
+        // Extract only the value or direct answer
+        // Try to find a line with the value
+        const valueLine = text
+          .split("\n")
+          .find(
+            (line) =>
+              line.toLowerCase().includes("net salary") ||
+              line.toLowerCase().includes("salary") ||
+              line.toLowerCase().includes("attendance") ||
+              line.toLowerCase().includes("payroll")
           );
-          generalResultText = `Total overtime for ${emp.firstName} ${
-            emp.lastName || ""
-          } is ${totalOvertime} hours.`;
-        } else {
-          generalResultText = `Overtime for ${emp.firstName} ${
-            emp.lastName || ""
-          } does not exist.`;
+        if (valueLine) {
+          conciseAnswer = valueLine;
         }
-        found = true;
-      }
-      // Department
-      else if (keywords.includes("department")) {
-        if (emp.department && emp.department.departmentName) {
-          generalResultText = `${emp.firstName} ${
-            emp.lastName || ""
-          } is in the ${emp.department.departmentName} department.`;
-        } else {
-          generalResultText = `Department for ${emp.firstName} ${
-            emp.lastName || ""
-          } does not exist.`;
-        }
-        found = true;
-      }
-    }
-    // Department info (not about employee)
-    if (!found && keywords.includes("department")) {
-      let deptNameMatch = question.match(/department (named )?([a-zA-Z ]+)/i);
-      let deptName = null;
-      if (deptNameMatch) deptName = deptNameMatch[2].trim();
-      if (deptName) {
-        const dept = await departmentModel.findOne({
-          departmentName: new RegExp(deptName, "i"),
-        });
-        if (dept) {
-          generalResultText = `Department '${dept.departmentName}' exists.`;
-        } else {
-          generalResultText = `Department '${deptName}' does not exist.`;
-        }
-        found = true;
-      }
-    }
-    // Holiday info
-    if (!found && keywords.includes("holiday")) {
-      let holidayNameMatch = question.match(/holiday (named )?([a-zA-Z ]+)/i);
-      let holidayName = null;
-      if (holidayNameMatch) holidayName = holidayNameMatch[2].trim();
-      if (holidayName) {
-        const holiday = await holidayModel.findOne({
-          name: new RegExp(holidayName, "i"),
-        });
-        if (holiday) {
-          generalResultText = `Holiday '${holiday.name}' is on ${
-            holiday.date.toISOString().split("T")[0]
-          }.`;
-        } else {
-          generalResultText = `Holiday '${holidayName}' does not exist.`;
-        }
-        found = true;
       } else {
-        // List all holidays
-        const holidays = await holidayModel.find({});
-        if (holidays.length > 0) {
-          generalResultText = `Holidays: ${holidays
-            .map((h) => `${h.name} (${h.date.toISOString().split("T")[0]})`)
-            .join(", ")}`;
-        } else {
-          generalResultText = `No holidays exist.`;
+        // For all other cases, return only the first sentence or direct answer
+        const firstLine = text
+          .split("\n")
+          .find((line) => line.trim().length > 0);
+        if (firstLine) {
+          conciseAnswer = firstLine;
         }
-        found = true;
       }
-    }
-    // If a direct answer was found, return it immediately
-    if (found && generalResultText) {
-      return res.status(200).json({
+      console.log(conciseAnswer);
+      res.status(200).json({
         success: true,
         message: "Chatbot response generated successfully",
         data: {
           question,
-          answer: generalResultText,
+          answer: conciseAnswer,
           timestamp: new Date().toISOString(),
-          dbResult: generalResultText,
+          dbResult: generalResultText || undefined,
         },
       });
+    } catch (error) {
+      console.error("Chatbot Error:", error);
+      return next(
+        new AppError(
+          "Failed to generate response. Please try again later.",
+          500
+        )
+      );
     }
-
-    // Initialize Google Gemini AI with API key
-    const genAI = new GoogleGenerativeAI(process.env.BOT_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    // Create the full prompt with user question and (if present) db result
-    const fullPrompt = `${SYSTEM_PROMPT}
-
-User Question: ${question}
-${dbResultText ? `\n${dbResultText}` : ""}
-Please provide a helpful, accurate response based on the HR system capabilities described above.`;
-
-    // Generate response
-    const result = await model.generateContent(fullPrompt);
-    const response = await result.response;
-    let text = response.text();
-    console.log(text);
-
-    // Post-process the response for conciseness
-    let conciseAnswer = text;
-    if (
-      lowerQ.includes("step") ||
-      lowerQ.includes("how do i") ||
-      lowerQ.includes("how to")
-    ) {
-      // Extract only the steps (numbered or bulleted list)
-      const stepsMatch = text.match(/(\d+\. .+|\- .+)([\s\S]*)/);
-      if (stepsMatch) {
-        // Get all lines that look like steps
-        const lines = text
-          .split("\n")
-          .filter((line) => line.match(/^\d+\. |^- /));
-        if (lines.length > 0) {
-          conciseAnswer = lines.join("\n");
-        }
-      }
-    } else if (
-      lowerQ.includes("net salary for") ||
-      lowerQ.includes("salary for") ||
-      lowerQ.includes("attendance for") ||
-      lowerQ.includes("payroll for")
-    ) {
-      // Extract only the value or direct answer
-      // Try to find a line with the value
-      const valueLine = text
-        .split("\n")
-        .find(
-          (line) =>
-            line.toLowerCase().includes("net salary") ||
-            line.toLowerCase().includes("salary") ||
-            line.toLowerCase().includes("attendance") ||
-            line.toLowerCase().includes("payroll")
-        );
-      if (valueLine) {
-        conciseAnswer = valueLine;
-      }
-    } else {
-      // For all other cases, return only the first sentence or direct answer
-      const firstLine = text.split("\n").find((line) => line.trim().length > 0);
-      if (firstLine) {
-        conciseAnswer = firstLine;
-      }
-    }
-    console.log(conciseAnswer);
-    res.status(200).json({
-      success: true,
-      message: "Chatbot response generated successfully",
-      data: {
-        question,
-        answer: conciseAnswer,
-        timestamp: new Date().toISOString(),
-        dbResult: dbResultText || undefined,
-      },
-    });
   } catch (error) {
     console.error("Chatbot Error:", error);
     return next(
