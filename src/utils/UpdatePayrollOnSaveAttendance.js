@@ -83,12 +83,10 @@ const UpdatePayrollOnSaveAttendance = async (doc) => {
     // After updating attendedDays, absentDays, totalOvertime, totalDeduction, totalBonusAmount, and totalDeductionAmount, calculate absent deduction and update netSalary
     // Calculate absent deduction using salaryPerHour
     const absentDeduction =
-      employee.workingHoursPerDay *
-      employee.salaryPerHour;
+      employee.workingHoursPerDay * employee.salaryPerHour;
     // Late deduction uses deductionValue
-    empPayroll.totalDeductionAmount +=  absentDeduction;
-    empPayroll.netSalary -=
-      empPayroll.totalDeductionAmount;
+    empPayroll.totalDeductionAmount += absentDeduction;
+    empPayroll.netSalary -= absentDeduction;
     // Ensure netSalary is not negative
     await empPayroll.save();
   }
