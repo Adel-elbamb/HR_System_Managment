@@ -64,7 +64,7 @@ const PayrollSchema = new Schema(
 PayrollSchema.pre(/^find/, function (next) {
   this.populate({
     path: "employeeId",
-    select: "firstName lastName",
+    select: "firstName lastName salary",
   });
   next();
 });
