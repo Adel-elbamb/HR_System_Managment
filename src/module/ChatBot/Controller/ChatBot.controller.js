@@ -33,43 +33,321 @@ let PROJECT_MODELS = {};
 
 // --- Natural Language Query Parser ---
 /**
- * Parses a user question and tries to extract the model, fields, and filters.
- * This is a basic version and can be improved for more complex queries.
+ * Enhanced: Parses a user question and tries to extract the model, fields, and complex filters.
+ * Supports synonyms, partial matches, and advanced filter expressions.
  * @param {string} question
  * @param {object} modelsMap
  * @returns {object} { model, fields, filters }
  */
+const FIELD_SYNONYMS = {
+  // Employee
+  firstName: ["first name", "given name", "fname", "name"],
+  lastName: ["last name", "surname", "lname", "family name"],
+  email: ["mail", "e-mail", "email address"],
+  phone: ["mobile", "phone number", "contact"],
+  department: ["dept", "division", "team"],
+  hireDate: ["hired", "joined", "start date", "hire date", "joining date"],
+  salary: ["wage", "pay", "base salary", "income"],
+  workingHoursPerDay: ["work hours", "hours per day", "daily hours"],
+  defaultCheckInTime: ["check in", "start time", "in time"],
+  defaultCheckOutTime: ["check out", "end time", "out time"],
+  address: ["location", "residence", "home"],
+  gender: ["sex"],
+  nationality: ["country", "citizenship"],
+  birthdate: ["dob", "date of birth", "birthday"],
+  nationalId: ["nid", "id number", "national id"],
+  weekendDays: ["weekend", "off days"],
+  overtimeValue: ["overtime rate", "ot value", "ot rate"],
+  deductionValue: ["deduction rate", "deduct value"],
+  salaryPerHour: ["hourly wage", "hourly rate"],
+  isDeleted: ["deleted", "removed", "inactive"],
+  // Attendance
+  employeeId: ["employee", "staff", "person"],
+  date: ["day", "attendance date"],
+  checkInTime: ["check in", "in time"],
+  checkOutTime: ["check out", "out time"],
+  lateDurationInHours: ["late", "late hours", "lateness"],
+  overtimeDurationInHours: ["overtime", "ot hours"],
+  status: ["present", "absent", "on leave", "attendance status"],
+  // Payroll
+  month: ["pay month", "salary month"],
+  year: ["pay year", "salary year"],
+  monthDays: ["days in month"],
+  attendedDays: ["present days", "attendance days"],
+  absentDays: ["absent days"],
+  totalOvertime: ["total ot", "total overtime"],
+  totalBonusAmount: ["bonus", "total bonus"],
+  totalDeduction: ["deduction", "total deduction"],
+  totalDeductionAmount: ["deduction amount", "total deduction amount"],
+  netSalary: ["net pay", "net income", "take home", "net salary"],
+  // Department
+  departmentName: ["department", "dept name", "team name"],
+  // Holiday
+  name: ["holiday name", "occasion"],
+  // HR
+  role: ["position", "job role"],
+};
+
+function getCanonicalField(modelFields, userField) {
+  // Try exact match
+  if (modelFields.includes(userField)) return userField;
+  // Try synonym match
+  for (const field of modelFields) {
+    if (FIELD_SYNONYMS[field]) {
+      for (const syn of FIELD_SYNONYMS[field]) {
+        if (userField.includes(syn) || syn.includes(userField)) return field;
+      }
+    }
+  }
+  // Try partial match
+  for (const field of modelFields) {
+    if (field.toLowerCase().includes(userField)) return field;
+  }
+  return null;
+}
+
 function parseUserQuery(question, modelsMap) {
   const lowerQ = question.toLowerCase();
-  // Try to find which model is being referenced
+  // Try to find which model is being referenced (by name or synonym)
   let foundModel = null;
   for (const modelName of Object.keys(modelsMap)) {
     if (lowerQ.includes(modelName.toLowerCase())) {
       foundModel = modelName;
       break;
     }
+    // Try plural
+    if (lowerQ.includes(modelName.toLowerCase() + "s")) {
+      foundModel = modelName;
+      break;
+    }
+    // Try synonyms for model (e.g., "staff" for Employee)
+    if (
+      modelName === "Employee" &&
+      /staff|personnel|worker|employee/.test(lowerQ)
+    ) {
+      foundModel = modelName;
+      break;
+    }
+    if (modelName === "Department" && /team|division|department/.test(lowerQ)) {
+      foundModel = modelName;
+      break;
+    }
+    if (modelName === "Payroll" && /payroll|salary|wage|pay/.test(lowerQ)) {
+      foundModel = modelName;
+      break;
+    }
+    if (
+      modelName === "Attendance" &&
+      /attendance|check in|check out|present|absent/.test(lowerQ)
+    ) {
+      foundModel = modelName;
+      break;
+    }
+    if (
+      modelName === "OfficialHoliday" &&
+      /holiday|leave|vacation|occasion/.test(lowerQ)
+    ) {
+      foundModel = modelName;
+      break;
+    }
+    if (
+      modelName === "HR" &&
+      /hr|human resources|admin|administrator/.test(lowerQ)
+    ) {
+      foundModel = modelName;
+      break;
+    }
   }
-  // Try to extract fields
+  // Try to extract fields (by synonym, partial, or direct)
   let foundFields = [];
   if (foundModel) {
     for (const field of modelsMap[foundModel]) {
       if (lowerQ.includes(field.toLowerCase())) {
         foundFields.push(field);
+        continue;
+      }
+      if (FIELD_SYNONYMS[field]) {
+        for (const syn of FIELD_SYNONYMS[field]) {
+          if (lowerQ.includes(syn)) {
+            foundFields.push(field);
+            break;
+          }
+        }
+      }
+    }
+    // Try to extract generic fields (e.g., "name" matches firstName/lastName)
+    if (foundFields.length === 0) {
+      for (const field of modelsMap[foundModel]) {
+        if (field.toLowerCase().includes("name") && lowerQ.includes("name")) {
+          foundFields.push(field);
+        }
       }
     }
   }
-  // Try to extract simple filters (e.g., by field value)
+  // Try to extract complex filters (>, <, >=, <=, between, etc.)
   let filters = {};
   if (foundModel) {
     for (const field of modelsMap[foundModel]) {
-      const regex = new RegExp(`${field} (is|=|equals|to) ([^,?]+)`, "i");
-      const match = question.match(regex);
-      if (match) {
-        filters[field] = match[2].trim();
+      // Direct equality (is, =, equals, to)
+      const eqRegex = new RegExp(`${field} (is|=|equals|to) ([^,?]+)`, "i");
+      const eqMatch = question.match(eqRegex);
+      if (eqMatch) {
+        filters[field] = eqMatch[2].trim();
+        continue;
+      }
+      // Greater than
+      const gtRegex = new RegExp(
+        `${field} (>|greater than|more than|above|at least) ([0-9.]+)`,
+        "i"
+      );
+      const gtMatch = question.match(gtRegex);
+      if (gtMatch) {
+        filters[field] = { $gte: parseFloat(gtMatch[2]) };
+        continue;
+      }
+      // Less than
+      const ltRegex = new RegExp(
+        `${field} (<|less than|below|under|at most) ([0-9.]+)`,
+        "i"
+      );
+      const ltMatch = question.match(ltRegex);
+      if (ltMatch) {
+        filters[field] = { $lte: parseFloat(ltMatch[2]) };
+        continue;
+      }
+      // Between
+      const betweenRegex = new RegExp(
+        `${field} (between|from) ([0-9.]+) (and|to) ([0-9.]+)`,
+        "i"
+      );
+      const betweenMatch = question.match(betweenRegex);
+      if (betweenMatch) {
+        filters[field] = {
+          $gte: parseFloat(betweenMatch[2]),
+          $lte: parseFloat(betweenMatch[4]),
+        };
+        continue;
+      }
+      // Date (month/year)
+      if (
+        field.toLowerCase().includes("date") ||
+        field === "month" ||
+        field === "year"
+      ) {
+        // e.g., "in December 2024", "for 2023", "in June"
+        const dateRegex = /in ([a-zA-Z]+) ?(\d{4})?/i;
+        const dateMatch = question.match(dateRegex);
+        if (dateMatch) {
+          if (field === "month") {
+            const monthNum =
+              new Date(Date.parse(dateMatch[1] + " 1, 2000")).getMonth() + 1;
+            filters[field] = monthNum;
+          }
+          if (field === "year" && dateMatch[2]) {
+            filters[field] = parseInt(dateMatch[2]);
+          }
+        }
       }
     }
   }
   return { model: foundModel, fields: foundFields, filters };
+}
+
+// --- Aggregation/Group-By Query Parser ---
+function parseAggregationIntent(question, modelsMap) {
+  const lowerQ = question.toLowerCase();
+  // Detect aggregation type
+  let aggType = null;
+  if (/count|number of|how many|total number/.test(lowerQ)) aggType = "count";
+  else if (/sum|total(?! number)/.test(lowerQ)) aggType = "sum";
+  else if (/average|avg|mean/.test(lowerQ)) aggType = "avg";
+  else if (/minimum|min|lowest|smallest/.test(lowerQ)) aggType = "min";
+  else if (/maximum|max|highest|largest/.test(lowerQ)) aggType = "max";
+
+  // Detect group by (e.g., per department, by month)
+  let groupBy = null;
+  for (const modelName of Object.keys(modelsMap)) {
+    for (const field of modelsMap[modelName]) {
+      if (new RegExp(`per ${field}|by ${field}|grouped by ${field}|for each ${field}`, "i").test(lowerQ)) {
+        groupBy = field;
+        break;
+      }
+      if (FIELD_SYNONYMS[field]) {
+        for (const syn of FIELD_SYNONYMS[field]) {
+          if (new RegExp(`per ${syn}|by ${syn}|grouped by ${syn}|for each ${syn}`, "i").test(lowerQ)) {
+            groupBy = field;
+            break;
+          }
+        }
+      }
+    }
+    if (groupBy) break;
+  }
+
+  // Detect aggregation field (e.g., overtime, salary)
+  let aggField = null;
+  for (const modelName of Object.keys(modelsMap)) {
+    for (const field of modelsMap[modelName]) {
+      if (lowerQ.includes(field.toLowerCase())) {
+        aggField = field;
+        break;
+      }
+      if (FIELD_SYNONYMS[field]) {
+        for (const syn of FIELD_SYNONYMS[field]) {
+          if (lowerQ.includes(syn)) {
+            aggField = field;
+            break;
+          }
+        }
+      }
+    }
+    if (aggField) break;
+  }
+
+  return { aggType, groupBy, aggField };
+}
+
+// --- Aggregation Query Executor ---
+async function executeAggregationQuery(modelName, aggType, groupBy, aggField, filters) {
+  // Map model name to imported model
+  const modelMap = {
+    Employee: employeeModel,
+    Department: departmentModel,
+    Attendance: attendanceModel,
+    Payroll: payrollModel,
+    OfficialHoliday: holidayModel,
+    HR: hrModel,
+  };
+  const model = modelMap[modelName];
+  if (!model) return null;
+  // Build aggregation pipeline
+  let pipeline = [];
+  if (filters && Object.keys(filters).length > 0) {
+    pipeline.push({ $match: filters });
+  }
+  let groupStage = {};
+  if (groupBy) {
+    groupStage._id = `$${groupBy}`;
+  } else {
+    groupStage._id = null;
+  }
+  if (aggType === "count") {
+    groupStage.count = { $sum: 1 };
+  } else if (aggType === "sum" && aggField) {
+    groupStage.total = { $sum: `$${aggField}` };
+  } else if (aggType === "avg" && aggField) {
+    groupStage.average = { $avg: `$${aggField}` };
+  } else if (aggType === "min" && aggField) {
+    groupStage.min = { $min: `$${aggField}` };
+  } else if (aggType === "max" && aggField) {
+    groupStage.max = { $max: `$${aggField}` };
+  }
+  pipeline.push({ $group: groupStage });
+  // Optionally sort by group key
+  if (groupBy) {
+    pipeline.push({ $sort: { _id: 1 } });
+  }
+  return await model.aggregate(pipeline);
 }
 
 // --- Dynamic Query Builder ---
@@ -483,12 +761,10 @@ export const chatBotController = asyncHandler(async (req, res, next) => {
           .populate("department");
       }
       if (!employee) {
-        return res
-          .status(200)
-          .json({
-            message: `No employee found with name '${name}'.`,
-            results: [],
-          });
+        return res.status(200).json({
+          message: `No employee found with name '${name}'.`,
+          results: [],
+        });
       }
       // Gather attendance (last 5 records)
       const attendanceRecords = await attendanceModel
@@ -549,6 +825,70 @@ export const chatBotController = asyncHandler(async (req, res, next) => {
     // --- New Autonomous Project-Aware Logic ---
     // 1. Parse the question
     const parsedQuery = parseUserQuery(question, PROJECT_MODELS);
+    // 1b. Parse aggregation intent
+    const aggIntent = parseAggregationIntent(question, PROJECT_MODELS);
+    // 2. If aggregation is requested, run aggregation pipeline
+    if (parsedQuery.model && aggIntent.aggType) {
+      const aggResult = await executeAggregationQuery(
+        parsedQuery.model,
+        aggIntent.aggType,
+        aggIntent.groupBy,
+        aggIntent.aggField,
+        parsedQuery.filters
+      );
+      if (aggResult && aggResult.length > 0) {
+        // Format aggregation result for response
+        let summary = "";
+        if (aggIntent.aggType === "count" && aggIntent.groupBy) {
+          summary = aggResult
+            .map((r) => `${aggIntent.groupBy}: ${r._id || "N/A"} - Count: ${r.count}`)
+            .join("; ");
+        } else if (aggIntent.aggType === "count") {
+          summary = `Count: ${aggResult[0].count}`;
+        } else if (aggIntent.aggType === "sum") {
+          if (aggIntent.groupBy) {
+            summary = aggResult
+              .map((r) => `${aggIntent.groupBy}: ${r._id || "N/A"} - Total: ${r.total}`)
+              .join("; ");
+          } else {
+            summary = `Total ${aggIntent.aggField}: ${aggResult[0].total}`;
+          }
+        } else if (aggIntent.aggType === "avg") {
+          if (aggIntent.groupBy) {
+            summary = aggResult
+              .map((r) => `${aggIntent.groupBy}: ${r._id || "N/A"} - Average: ${r.average}`)
+              .join("; ");
+          } else {
+            summary = `Average ${aggIntent.aggField}: ${aggResult[0].average}`;
+          }
+        } else if (aggIntent.aggType === "min") {
+          if (aggIntent.groupBy) {
+            summary = aggResult
+              .map((r) => `${aggIntent.groupBy}: ${r._id || "N/A"} - Min: ${r.min}`)
+              .join("; ");
+          } else {
+            summary = `Min ${aggIntent.aggField}: ${aggResult[0].min}`;
+          }
+        } else if (aggIntent.aggType === "max") {
+          if (aggIntent.groupBy) {
+            summary = aggResult
+              .map((r) => `${aggIntent.groupBy}: ${r._id || "N/A"} - Max: ${r.max}`)
+              .join("; ");
+          } else {
+            summary = `Max ${aggIntent.aggField}: ${aggResult[0].max}`;
+          }
+        }
+        return res.status(200).json({
+          message: summary,
+          results: aggResult,
+        });
+      } else {
+        return res.status(200).json({
+          message: `No aggregation results found for your query on ${parsedQuery.model}.`,
+          results: [],
+        });
+      }
+    }
     // 2. If a model is found, execute the query
     if (parsedQuery.model) {
       const result = await executeDynamicQuery(parsedQuery);
