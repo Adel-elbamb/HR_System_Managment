@@ -15,7 +15,7 @@ export const addEmployeeSchema = Joi.object({
     .required()
     .pattern(new RegExp("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$")),
   phone: Joi.string().required().pattern(new RegExp("^[0-9]{11}$")),
-  salary: Joi.number().required(),
+  salary: Joi.number().required().min(6000),
   defaultCheckInTime: Joi.string()
     .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
     .required()
@@ -49,8 +49,8 @@ export const addEmployeeSchema = Joi.object({
       )
     )
     .required(),
-  overtimeValue: Joi.number().required(),
-  deductionValue: Joi.number().required(),
+  overtimeValue: Joi.number().required().min(1),
+  deductionValue: Joi.number().required().min(1),
   overtimeType: Joi.string().required().valid("hr", "pound"),
   deductionType: Joi.string().required().valid("hr", "pound"),
 });
