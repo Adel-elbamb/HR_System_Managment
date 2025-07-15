@@ -61,7 +61,16 @@ export const updateEmployee = asyncHandler(async (req, res, next) => {
   if (existingNationalId) {
     return next(new AppError("nationalId Already exist", 402));
   }
-
+  const currentYear = new Date().getFullYear();
+  const birthYear = new Date(birthdate).getFullYear();
+  if (isNaN(birthYear) || birthYear > currentYear - 16) {
+    return next(
+      new AppError(
+        "Birthdate must be at least 16 years before the current year",
+        400
+      )
+    );
+  }
   const updateData = {
     firstName,
     lastName,
